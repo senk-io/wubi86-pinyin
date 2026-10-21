@@ -41,8 +41,9 @@ type fileTerms struct {
 }
 
 // extractTerms 分窗口调用模型抽取术语，只保留原文中确实出现过的词，防止模型编造。
-// duty 是后台抽取占用模型的时间比例（0–1]：每次调用后休息相应时长，避免长时间占满 CPU/GPU。
-func extractTerms(ctx context.Context, o *Ollama, text string, duty float64) (map[string]int, error) {
+// duty 返回后台抽取占用模型的时间比例（0–1]：每次调用后休息相应时长，避免长时间占满 CPU/GPU。
+// 每次调用前重新取值，插拔电源后一分钟内生效。
+func extractTerms(ctx context.Context, o *Ollama, text string, duty func() float64) (map[string]int, error) {
 	counts := map[string]int{}
 	for _, window := range windows(text, termWindowRunes) {
 		start := time.Now()
@@ -50,7 +51,7 @@ func extractTerms(ctx context.Context, o *Ollama, text string, duty float64) (ma
 		if err != nil {
 			return nil, err
 		}
-		if err := rest(ctx, time.Since(start), duty); err != nil {
+		if err := rest(ctx, time.Since(start), duty()); err != nil {
 			return nil, err
 		}
 		for _, t := range parseTerms(out, window) {
@@ -180,7 +181,7 @@ func (idx *TermIndex) Totals() map[string]int {
 // update 增量更新：新增或改动的文件重新抽取，删除的文件移除。内容与已抽取文件相同的
 // （项目里常有整份复制的目录）直接复用结果，不再调用模型。
 // progress 每处理完一个文件调用一次，done/total 为本轮需要处理的文件数。
-func (idx *TermIndex) update(ctx context.Context, o *Ollama, root string, duty float64, progress func(file string, done, total int, reused bool)) (changed int, err error) {
+func (idx *TermIndex) update(ctx context.Context, o *Ollama, root string, duty func() float64, progress func(file string, done, total int, reused bool)) (changed int, err error) {
 	type pending struct {
 		rel, path string
 		mtime     int64

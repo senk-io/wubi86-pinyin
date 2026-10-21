@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -103,6 +104,13 @@ func (d *Daemon) profile() string {
 
 // Run 主循环：轮询 context.txt，有新上屏就检索并生成联想；定期增量索引资料文件夹。
 func (d *Daemon) Run(ctx context.Context) error {
+	if d.cfg.IndexDuty > 0 {
+		log.Printf("后台抽取限速：占用比例 %.2f（config.json 的 index_duty）", d.cfg.IndexDuty)
+	} else {
+		hw := currentHW()
+		log.Printf("后台抽取限速：自动，当前占用比例 %.2f（%s/%s，内存 %dGB，电池供电 %v）",
+			d.cfg.indexDuty(), runtime.GOOS, runtime.GOARCH, hw.memBytes>>30, hw.onBattery)
+	}
 	go d.reindexLoop(ctx)
 	tick := time.NewTicker(pollInterval)
 	defer tick.Stop()
@@ -270,7 +278,7 @@ func (d *Daemon) termListPath(name string) string {
 
 func (d *Daemon) reindexTerms(ctx context.Context, f Folder) {
 	idx := d.terms[f.Name]
-	n, err := idx.update(ctx, d.llm, f.Path, d.cfg.IndexDuty, func(file string, done, total int, reused bool) {
+	n, err := idx.update(ctx, d.llm, f.Path, d.cfg.indexDuty, func(file string, done, total int, reused bool) {
 		note := ""
 		if reused {
 			note = "（与已抽取的文件内容相同，直接复用）"

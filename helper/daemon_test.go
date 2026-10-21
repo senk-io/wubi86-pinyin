@@ -61,6 +61,7 @@ func newTestDaemon(t *testing.T, folders []Folder) (*Daemon, *fakeOllama) {
 	cfg.OllamaURL = srv.URL
 	cfg.Folders = folders
 	cfg.Continuation = true
+	cfg.IndexDuty = 1 // 测试不限速
 	d, err := newDaemon(t.TempDir(), cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -269,5 +270,28 @@ func TestContinuationOffSkipsContext(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	if _, err := os.Stat(d.path("suggest.txt")); err == nil {
 		t.Fatal("continuation disabled but suggestion written")
+	}
+}
+
+func TestAutoDuty(t *testing.T) {
+	cases := []struct {
+		goos, goarch string
+		hw           hwInfo
+		want         float64
+	}{
+		{"darwin", "arm64", hwInfo{memBytes: 36 << 30}, 0.5},
+		{"darwin", "arm64", hwInfo{memBytes: 36 << 30, onBattery: true}, 0.25},
+		{"darwin", "arm64", hwInfo{memBytes: 8 << 30}, 0.25},
+		{"darwin", "amd64", hwInfo{memBytes: 16 << 30}, 0.25},
+		{"windows", "amd64", hwInfo{memBytes: 8 << 30, onBattery: true}, 0.0625},
+		{"linux", "amd64", hwInfo{}, 0.25},
+	}
+	for _, c := range cases {
+		if got := autoDuty(c.goos, c.goarch, c.hw); got != c.want {
+			t.Errorf("autoDuty(%s/%s, %+v) = %v, want %v", c.goos, c.goarch, c.hw, got, c.want)
+		}
+	}
+	if d := (Config{IndexDuty: 0.8}).indexDuty(); d != 0.8 {
+		t.Errorf("configured duty ignored: %v", d)
 	}
 }
