@@ -2,7 +2,7 @@
 # 可选：安装拼音整句语言模型，一口气打一长串拼音时整句首选更准（基准 29/36 → 35/36，见 tests/bench.sh）。
 # 模型 zh-hans-t-essay-bgw.gram 来自 lotem/rime-octagram-data，LGPL-3.0，不随本仓库分发：
 # 由本脚本从固定版本下载并校验 SHA-256。鼠须管自带加载它的 librime-octagram 插件。
-# 两个安装包的方案（五笔86·拼音、拼音）都适用；装了哪个就配置哪个，之后再装另一个包时重新运行即可。
+# 两个安装包的方案（SENK五笔混拼输入法86版、SENK拼音输入法）都适用；装了哪个就配置哪个，之后再装另一个包时重新运行即可。
 #
 # 用法：sh scripts/install-grammar-macos.sh            安装（可重复运行）
 #       sh scripts/install-grammar-macos.sh --remove   卸载

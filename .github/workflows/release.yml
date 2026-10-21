@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install packages
-        # 两个安装包：wubi86-pinyin.zip（五笔86·拼音混输）和 pinyin.zip（纯拼音）。
+        # 两个安装包：wubi86-pinyin.zip（SENK五笔混拼输入法86版）和 pinyin.zip（SENK拼音输入法）。
         # 内容都是这个版本的源码，只是根目录的 VARIANT 不同，安装脚本据此决定装哪个方案。
         run: |
           mkdir -p dist

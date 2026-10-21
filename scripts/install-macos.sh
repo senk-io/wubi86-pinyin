@@ -8,7 +8,7 @@
 # - 日志写到 ~/Library/Logs/senk-input/。
 #
 # 用法：sh scripts/install-macos.sh [--apply] [wubi86-pinyin|pinyin]
-#   安装包：wubi86-pinyin 为五笔86·拼音混输，pinyin 为纯拼音；不给出时读取根目录的 VARIANT 文件，
+#   安装包：wubi86-pinyin 为SENK五笔混拼输入法86版，pinyin 为SENK拼音输入法；不给出时读取根目录的 VARIANT 文件，
 #   没有则为 wubi86-pinyin。两个包可以先后都装，方案菜单（Control+`）里切换。
 set -u
 
@@ -33,8 +33,8 @@ for arg in "$@"; do
 done
 [ -n "$variant" ] || variant=$(cat "$root/VARIANT" 2>/dev/null || echo wubi86-pinyin)
 case "$variant" in
-  wubi86-pinyin) schema=wubi86_pinyin schema_name="五笔86·拼音" test_hint="nihao 和 wqvb 都出「你好」" ;;
-  pinyin) schema=senk_pinyin schema_name="拼音" test_hint="nihao 出「你好」" ;;
+  wubi86-pinyin) schema=wubi86_pinyin schema_name="SENK五笔混拼输入法86版" test_hint="nihao 和 wqvb 都出「你好」" ;;
+  pinyin) schema=senk_pinyin schema_name="SENK拼音输入法" test_hint="nihao 出「你好」" ;;
   *) echo "未知的安装包：${variant}（可选 wubi86-pinyin、pinyin）" >&2; exit 1 ;;
 esac
 
@@ -123,7 +123,7 @@ check() {  # check <是否通过 0/1> <说明>
 # 发布包里由 git archive 替换为提交号
 # shellcheck disable=SC2016
 script_version='$Format:%h$'
-echo "wubi86-pinyin 安装脚本（版本 ${script_version}），安装包：${variant}（方案「${schema_name}」）"
+echo "森克输入法安装脚本（版本 ${script_version}），安装包：${variant}（方案「${schema_name}」）"
 if [ "$apply" = 1 ]; then echo "模式：执行"; else echo "模式：预览（不做任何改动；确认无误后加 --apply 执行）"; fi
 echo
 echo "前置检查："

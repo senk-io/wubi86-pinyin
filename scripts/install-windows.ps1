@@ -1,6 +1,6 @@
 ﻿# 安装到小狼毫（Weasel）用户目录并重新部署；没装小狼毫时先自动安装。
 # 用法：powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1 [wubi86-pinyin|pinyin]
-#   安装包：wubi86-pinyin 为五笔86·拼音混输，pinyin 为纯拼音；不给出时读取根目录的 VARIANT 文件，
+#   安装包：wubi86-pinyin 为SENK五笔混拼输入法86版，pinyin 为SENK拼音输入法；不给出时读取根目录的 VARIANT 文件，
 #   没有则为 wubi86-pinyin。文件清单与 scripts/assemble.sh 一致。
 param([string]$Variant = "")
 $ErrorActionPreference = "Stop"

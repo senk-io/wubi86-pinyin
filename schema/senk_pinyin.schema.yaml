@@ -1,13 +1,13 @@
 # Rime schema
 # encoding: utf-8
 #
-# 拼音（纯拼音，不含五笔）
+# SENK拼音输入法：纯拼音，不含五笔
 # - 全拼、简拼、整句连打；装上可选语言模型后整句更准（scripts/install-grammar-macos.sh）
 # - 开启用户词典，常用字词自动前移
 
 schema:
   schema_id: senk_pinyin
-  name: 拼音
+  name: SENK拼音输入法
   version: "0.5.0"
   author:
     - wubi86-pinyin contributors
