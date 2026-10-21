@@ -37,6 +37,8 @@ kk
 kk
 !1 kkd
 kk
+# 上屏时记下打字时间（只有时间），供 wubi86d 打字时暂停后台抽取
+$ test -s "$RIME_USER/wubi86d/active.txt" && echo active
 # 续写联想（开关 predict，默认关闭）：上屏"今天""天气"后，context.txt 里是刚上屏的词和最近的上文；
 # 再模拟 wubi86d 按上文序号写出联想词
 + predict

@@ -68,6 +68,16 @@ local function tail_runes(s, n)
   return s:sub(utf8.offset(s, len - n + 1))
 end
 
+-- 上屏后调用（不论开关）：告诉 wubi86d 用户正在打字，后台抽取术语先暂停让出算力。
+-- 只写时间，不写内容；最多每 5 秒写一次。
+local active_at = 0
+function M.touch_active()
+  local now = os.time()
+  if now - active_at < 5 or not M.available() then return end
+  active_at = now
+  write_file("active.txt", now .. "\n")
+end
+
 -- 上屏后调用：更新上文并通知 wubi86d
 function M.on_commit(text)
   if not M.available() then return end

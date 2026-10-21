@@ -22,6 +22,7 @@ import (
 //	profile.txt  当前使用的资料文件夹名（空表示只用输入历史）；Lua 快捷键或 `wubi86d use` 写
 //	folders.txt  本进程写：可切换的文件夹名，每行一个，供 Lua 快捷键轮换
 //	terms/<名称>.txt  本进程写：该文件夹的项目术语表，第 1 行版本号，之后「术语<TAB>次数」
+//	active.txt   Lua 写：最近一次上屏的时间（只有时间，不含内容），用户在打字时后台抽取暂停
 //	index/       向量索引与术语索引
 //
 // 不监听任何端口；唯一的网络访问是本机的 Ollama。
@@ -33,6 +34,7 @@ const (
 	historyFlushAt = 60 // 输入历史攒到这么多字也会入库
 	minScore       = 0.3
 	predictTimeout = 8 * time.Second
+	idleAfter      = 30 * time.Second // 最近这么久内有上屏，就算用户在打字
 )
 
 type Daemon struct {
@@ -272,13 +274,19 @@ func (d *Daemon) reindex(ctx context.Context) {
 	}
 }
 
+// typing 判断用户是否正在打字：Lua 每次上屏时（最多每 5 秒一次）更新 active.txt。
+func (d *Daemon) typing() bool {
+	info, err := os.Stat(d.path("active.txt"))
+	return err == nil && time.Since(info.ModTime()) < idleAfter
+}
+
 func (d *Daemon) termListPath(name string) string {
 	return filepath.Join(d.dir, "terms", safeName(name)+".txt")
 }
 
 func (d *Daemon) reindexTerms(ctx context.Context, f Folder) {
 	idx := d.terms[f.Name]
-	n, err := idx.update(ctx, d.llm, f.Path, d.cfg.indexDuty, func(file string, done, total int, reused bool) {
+	n, err := idx.update(ctx, d.llm, f.Path, &pacer{duty: d.cfg.indexDuty, busy: d.typing}, func(file string, done, total int, reused bool) {
 		note := ""
 		if reused {
 			note = "（与已抽取的文件内容相同，直接复用）"

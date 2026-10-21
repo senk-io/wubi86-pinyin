@@ -41,17 +41,19 @@ type fileTerms struct {
 }
 
 // extractTerms 分窗口调用模型抽取术语，只保留原文中确实出现过的词，防止模型编造。
-// duty 返回后台抽取占用模型的时间比例（0–1]：每次调用后休息相应时长，避免长时间占满 CPU/GPU。
-// 每次调用前重新取值，插拔电源后一分钟内生效。
-func extractTerms(ctx context.Context, o *Ollama, text string, duty func() float64) (map[string]int, error) {
+// pace 控制后台抽取的节奏（见 pacer），为 nil 时不限速。
+func extractTerms(ctx context.Context, o *Ollama, text string, pace *pacer) (map[string]int, error) {
 	counts := map[string]int{}
 	for _, window := range windows(text, termWindowRunes) {
+		if err := pace.before(ctx); err != nil {
+			return nil, err
+		}
 		start := time.Now()
 		out, err := o.Generate(ctx, termSystemPrompt, window, 256, stringList)
 		if err != nil {
 			return nil, err
 		}
-		if err := rest(ctx, time.Since(start), duty()); err != nil {
+		if err := pace.after(ctx, time.Since(start)); err != nil {
 			return nil, err
 		}
 		for _, t := range parseTerms(out, window) {
@@ -64,12 +66,40 @@ func extractTerms(ctx context.Context, o *Ollama, text string, duty func() float
 	return counts, nil
 }
 
-// rest 按占用比例休息：干了 took，就再歇 took*(1/duty-1)。duty 不在 (0,1) 内时不休息。
-func rest(ctx context.Context, took time.Duration, duty float64) error {
+// pacer 控制后台抽取的节奏，不和打字抢资源：
+//   - 用户最近 idleAfter 内有上屏（busy 返回 true）时先暂停，空闲了再继续；
+//   - 每次调用模型后按占用比例 duty 休息：干了 took，就再歇 took*(1/duty-1)。
+//
+// duty 和 busy 在每次调用时重新取值，插拔电源、开始打字都能及时生效。
+type pacer struct {
+	duty func() float64
+	busy func() bool
+}
+
+const busyCheckEvery = 5 * time.Second
+
+func (p *pacer) before(ctx context.Context) error {
+	for p != nil && p.busy != nil && p.busy() {
+		if err := sleepCtx(ctx, busyCheckEvery); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *pacer) after(ctx context.Context, took time.Duration) error {
+	if p == nil || p.duty == nil {
+		return nil
+	}
+	duty := p.duty()
 	if duty <= 0 || duty >= 1 {
 		return nil
 	}
-	t := time.NewTimer(time.Duration(float64(took) * (1/duty - 1)))
+	return sleepCtx(ctx, time.Duration(float64(took)*(1/duty-1)))
+}
+
+func sleepCtx(ctx context.Context, d time.Duration) error {
+	t := time.NewTimer(d)
 	defer t.Stop()
 	select {
 	case <-ctx.Done():
@@ -181,7 +211,7 @@ func (idx *TermIndex) Totals() map[string]int {
 // update 增量更新：新增或改动的文件重新抽取，删除的文件移除。内容与已抽取文件相同的
 // （项目里常有整份复制的目录）直接复用结果，不再调用模型。
 // progress 每处理完一个文件调用一次，done/total 为本轮需要处理的文件数。
-func (idx *TermIndex) update(ctx context.Context, o *Ollama, root string, duty func() float64, progress func(file string, done, total int, reused bool)) (changed int, err error) {
+func (idx *TermIndex) update(ctx context.Context, o *Ollama, root string, pace *pacer, progress func(file string, done, total int, reused bool)) (changed int, err error) {
 	type pending struct {
 		rel, path string
 		mtime     int64
@@ -232,7 +262,7 @@ func (idx *TermIndex) update(ctx context.Context, o *Ollama, root string, duty f
 		hash := hex.EncodeToString(sum[:])
 		terms, reused := byHash[hash]
 		if !reused {
-			if terms, err = extractTerms(ctx, o, string(data), duty); err != nil {
+			if terms, err = extractTerms(ctx, o, string(data), pace); err != nil {
 				return changed, err
 			}
 			byHash[hash] = terms

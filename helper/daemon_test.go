@@ -295,3 +295,33 @@ func TestAutoDuty(t *testing.T) {
 		t.Errorf("configured duty ignored: %v", d)
 	}
 }
+
+func TestPacerWaitsWhileTyping(t *testing.T) {
+	d, _ := newTestDaemon(t, nil)
+	if d.typing() {
+		t.Fatal("typing without active.txt")
+	}
+	writeAtomic(d.path("active.txt"), []byte("1\n"))
+	if !d.typing() {
+		t.Fatal("recent active.txt not seen as typing")
+	}
+	old := time.Now().Add(-idleAfter - time.Second)
+	os.Chtimes(d.path("active.txt"), old, old)
+	if d.typing() {
+		t.Fatal("stale active.txt seen as typing")
+	}
+
+	// 正在打字时 before 一直等待，直到 ctx 取消
+	p := &pacer{busy: func() bool { return true }}
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	if err := p.before(ctx); err == nil {
+		t.Fatal("before returned while busy")
+	}
+	// 占用比例 0.5：休息时长等于调用时长
+	start := time.Now()
+	(&pacer{duty: func() float64 { return 0.5 }}).after(context.Background(), 30*time.Millisecond)
+	if el := time.Since(start); el < 30*time.Millisecond {
+		t.Fatalf("rested %v, want >= 30ms", el)
+	}
+}

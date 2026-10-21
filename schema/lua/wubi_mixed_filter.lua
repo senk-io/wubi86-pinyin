@@ -53,6 +53,7 @@ local function on_commit(ctx)
       end
     end
   end
+  predict.touch_active()
   if ctx:get_option("predict") then
     local text = ctx:get_commit_text()
     if text ~= "" then predict.on_commit(text) end

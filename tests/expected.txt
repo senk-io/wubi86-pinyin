@@ -28,6 +28,7 @@ commit qi -> 器
 kk: 1.吕 2.器〔kkd 忘1〕 3.嚣~d 4.骂~c 5.吅~g 6.串~h
 commit kkd -> 器
 kk: 1.吕 2.器~d 3.嚣~d 4.骂~c 5.吅~g 6.串~h
+active
 commit wygd -> 今天
 commit gdrn -> 天气
 天气

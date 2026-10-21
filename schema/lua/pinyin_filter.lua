@@ -19,6 +19,7 @@ function M.init(env)
   env.opts = predict.options(config, ns)
   env.opts.pinyin = ReverseLookup(config:get_string(ns .. "/pinyin_dictionary") or "pinyin_simp")
   env.commit_conn = env.engine.context.commit_notifier:connect(function(ctx)
+    predict.touch_active()
     if ctx:get_option("predict") then
       local text = ctx:get_commit_text()
       if text ~= "" then predict.on_commit(text) end
