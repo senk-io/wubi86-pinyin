@@ -34,14 +34,18 @@ install_squirrel() {
   echo "正在下载鼠须管 $version ..."
   curl -fL --progress-bar -o "$pkg" "$releases/download/$version/Squirrel-$version.pkg"
 
-  echo "正在安装鼠须管，需要输入本机登录密码："
-  sudo installer -pkg "$pkg" -target /
-
-  # 上游的应用使用 Developer ID 签名；签名校验不通过就停下，不继续写入配置
-  if ! codesign --verify --deep --strict "$squirrel_app" 2>/dev/null; then
-    echo "鼠须管签名校验失败，已停止。请到 $releases 手动下载安装。" >&2
+  # 安装前校验包内应用的 Developer ID 签名。不能装完再验：安装包的 postinstall
+  # 会在 Squirrel.app 内部生成预编译数据，之后整包签名校验必然失败。
+  pkgutil --expand-full "$pkg" "$tmp/expanded" >/dev/null
+  app=$(find "$tmp/expanded" -type d -name Squirrel.app -prune | head -n 1)
+  if [ -z "$app" ] || ! codesign --verify --deep --strict "$app" 2>/dev/null \
+     || ! codesign -dv "$app" 2>&1 | grep -q '^Authority=Developer ID Application'; then
+    echo "鼠须管安装包签名校验失败，已停止。请到 $releases 手动下载安装。" >&2
     exit 1
   fi
+
+  echo "正在安装鼠须管，需要输入本机登录密码："
+  sudo installer -pkg "$pkg" -target /
   echo "鼠须管 $version 安装完成。"
 }
 
