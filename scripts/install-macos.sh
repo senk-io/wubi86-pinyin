@@ -89,9 +89,14 @@ if [ -n "${keep:-}" ]; then
   mv "$keep" "$custom"
 fi
 
-"$squirrel" --enable-input-source >/dev/null 2>&1 || true
+# 加入系统输入法列表并切换过去：注册 → 启用 → 启动进程 → 部署 → 选中。
+# 参数显式给出 Hans 模式，否则鼠须管见到已启用的任意模式就会跳过。
+mode="im.rime.inputmethod.Squirrel.Hans"
+"$squirrel" --register-input-source >/dev/null 2>&1 || true
+"$squirrel" --enable-input-source "$mode" >/dev/null 2>&1 || true
+
 # 刚装完时鼠须管进程还没运行（安装包要求注销），--reload 只通知运行中的进程，
-# 什么也不会部署；所以先在后台启动它，等进程出现再触发部署
+# 什么也不会部署，菜单里也是灰色不可选；所以先在后台启动它，等进程出现再继续
 if ! pgrep -x Squirrel >/dev/null 2>&1; then
   open -g "$squirrel_app"
   i=0
@@ -101,5 +106,17 @@ if ! pgrep -x Squirrel >/dev/null 2>&1; then
   done
 fi
 "$squirrel" --reload
-echo "已安装并重新部署。请在菜单栏的输入法里选「鼠须管」，就能用「五笔86·拼音」打字了。"
-echo "如果菜单栏里还看不到鼠须管，请注销后重新登录一次。"
+
+# 已经选中时鼠须管也会输出 Failed，所以再看一下系统当前选中的输入法
+selected=$("$squirrel" --select-input-source "$mode" 2>&1 || true)
+case "$selected" in
+  *succeeds*) switched=1 ;;
+  *) defaults read com.apple.HIToolbox AppleSelectedInputSources 2>/dev/null \
+       | grep -q "$mode" && switched=1 || switched=0 ;;
+esac
+if [ "$switched" = 1 ]; then
+  echo "已安装并切换到鼠须管，可以直接用「五笔86·拼音」打字了。"
+  echo "重启后如果鼠须管在菜单里变成灰色，注销后重新登录一次即可。"
+else
+  echo "已安装并重新部署，但没能自动切换到鼠须管。请在菜单栏的输入法里手动选择；如果是灰色，注销后重新登录一次。"
+fi
