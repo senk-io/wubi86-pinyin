@@ -214,7 +214,8 @@ function M.codes(phrase, wubi, pinyin)
   end
   if spelled then
     flush_ascii()
-    result[#result + 1] = table.concat(spelled)
+    result.full = table.concat(spelled)
+    result[#result + 1] = result.full
     result[#result + 1] = table.concat(initials)
   end
   codes_cache[key] = result
@@ -232,6 +233,8 @@ end
 local TERM_SCAN = 2000
 
 -- 当前输入码能补全的项目术语和续写联想词，作为候选返回，由过滤器插在首选之后。
+-- 第二个返回值：全拼与输入完全一致的术语（如 duanjiaohuangyuan → 断角荒原）。首选是拼音凑出来的
+-- 整句时，过滤器把它提到第 1 位；五笔候选和词库里的词仍然排在前面。
 -- opts: wubi, pinyin（ReverseLookup，wubi 可为 nil）、prefix（学码前缀，可为 nil）、
 --       term_max, term_min_code, predict_max
 function M.candidates(ctx, opts)
@@ -243,7 +246,7 @@ function M.candidates(ctx, opts)
   local want_predict = ctx:get_option("predict")
   if not (want_terms or want_predict) or not M.available() then return {} end
 
-  local out, seen = {}, {}
+  local out, seen, exact = {}, {}, nil
   local function add(text, comment)
     if not seen[text] then
       seen[text] = true
@@ -257,9 +260,11 @@ function M.candidates(ctx, opts)
     for i = 1, math.min(#list, TERM_SCAN) do
       if n >= opts.term_max then break end
       local term = list[i].text
+      local codes = M.codes(term, opts.wubi, opts.pinyin)
       if M.matches(term, code, opts.wubi, opts.pinyin) then
         add(term, comment)
         n = n + 1
+        if not exact and codes.full == code then exact = out[#out] end
       end
     end
   end
@@ -275,7 +280,7 @@ function M.candidates(ctx, opts)
       end
     end
   end
-  return out
+  return out, exact
 end
 
 -- 读取过滤器配置中与术语、续写相关的项

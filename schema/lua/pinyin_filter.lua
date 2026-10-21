@@ -32,11 +32,17 @@ function M.fini(env)
 end
 
 function M.func(translation, env)
-  local pending = predict.candidates(env.engine.context, env.opts)  -- 在第一个候选之后插入
+  local pending, exact = predict.candidates(env.engine.context, env.opts)  -- 在第一个候选之后插入
   for cand in translation:iter() do
+    local promote = pending and exact and cand.type == "sentence"
+    if promote then
+      yield(exact)  -- 首选是凑出来的整句，全拼完全一致的术语排到它前面
+    end
     yield(cand)
     if pending then
-      for _, p in ipairs(pending) do yield(p) end
+      for _, p in ipairs(pending) do
+        if not (promote and p == exact) then yield(p) end
+      end
       pending = nil
     end
   end

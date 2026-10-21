@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -24,7 +25,8 @@ import (
 const (
 	termWindowRunes = 800 // 每次交给模型的文本长度
 	minTermRunes    = 2
-	maxTermRunes    = 20
+	maxTermRunes    = 20 // 英文名可以长一些，如 SenkNet-Gateway-API
+	maxHanTermRunes = 10 // 含汉字的术语再长就多半是整句片段了
 )
 
 const termSystemPrompt = "你是术语抽取工具。从用户给出的文本中找出这个项目或领域特有的叫法：" +
@@ -289,15 +291,61 @@ func (idx *TermIndex) update(ctx context.Context, o *Ollama, root string, pace *
 	return changed, err
 }
 
+var (
+	fileLike  = regexp.MustCompile(`[/\\]|\.[A-Za-z][A-Za-z0-9]{0,4}$`) // rules.json、docs/a.md
+	plainWord = regexp.MustCompile(`^[a-z]+$`)                          // owner、accepted：普通英文单词
+)
+
+// keepTerm 过滤模型抽出的、不像项目术语的词：文件名、普通英文单词、过长的整句片段，
+// 以及通用词库里本来就有的常用词（怪物、角色、规则……这些不用补全也打得出来）。
+// 在写术语表时过滤，所以规则调整后不必重新抽取。
+func keepTerm(t string, common map[string]bool) bool {
+	if fileLike.MatchString(t) || plainWord.MatchString(t) || common[t] {
+		return false
+	}
+	if hasHan(t) {
+		n := utf8.RuneCountInString(t)
+		if n > maxHanTermRunes || (n > 4 && strings.Contains(t, "的")) {
+			return false
+		}
+	}
+	return true
+}
+
+// loadCommonWords 读取 Rime 用户目录里的通用拼音词库（两个安装包都带），取两字以上的词。
+// 读不到时返回空表，即不按常用词过滤。
+func loadCommonWords(path string) map[string]bool {
+	words := map[string]bool{}
+	f, err := os.Open(path)
+	if err != nil {
+		return words
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	body := false
+	for sc.Scan() {
+		line := sc.Text()
+		if !body {
+			body = line == "..."
+			continue
+		}
+		word, _, _ := strings.Cut(line, "\t")
+		if utf8.RuneCountInString(word) >= 2 && !strings.HasPrefix(word, "#") {
+			words[word] = true
+		}
+	}
+	return words
+}
+
 // writeTermList 写出供输入法读取的术语表：第 1 行版本号，之后每行「术语<TAB>次数」，按次数降序。
-func writeTermList(path string, totals map[string]int) error {
+func writeTermList(path string, totals map[string]int, common map[string]bool) error {
 	type kv struct {
 		term  string
 		count int
 	}
 	list := make([]kv, 0, len(totals))
 	for t, n := range totals {
-		if n > 0 {
+		if n > 0 && keepTerm(t, common) {
 			list = append(list, kv{t, n})
 		}
 	}

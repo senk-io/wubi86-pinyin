@@ -49,6 +49,7 @@ jdoc: 1.星辰数据平台〔术语·工作〕
 hd: 1.睚 2.灰度发布〔术语·工作〕 3.HDR~r 4.狊~u 5.HDMI~m 6.卡耐基~ad
 senkn: 1.森〔sss〕 2.SenkNet-API〔术语·工作〕 3.色〔qc〕 4.瑟〔ggn〕 5.涩〔ivy〕 6.塞〔pfjf〕
 x: 1.经 2.弓 3.红~a 4.弛~b 5.顷~d 6.级~e
+duanjiaohuangyuan: 1.断角荒原〔术语·工作〕 2.段叫荒原 3.段〔wdm〕 4.短〔tdg〕 5.断〔on〕 6.端〔umd〕
 xcsj: 1.经查
 xcsj: 1.经查
 llbs: 1.蓝绿部署〔术语·工作〕

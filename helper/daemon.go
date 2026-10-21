@@ -40,7 +40,10 @@ const (
 type Daemon struct {
 	dir string
 	cfg Config
-	llm *Ollama
+
+	commonOnce sync.Once
+	common     map[string]bool
+	llm        *Ollama
 
 	mu      sync.Mutex
 	history *Store
@@ -274,6 +277,14 @@ func (d *Daemon) reindex(ctx context.Context) {
 	}
 }
 
+// commonWords 是通用拼音词库里的词，用于从术语表里去掉常用词；首次用到时读取一次。
+func (d *Daemon) commonWords() map[string]bool {
+	d.commonOnce.Do(func() {
+		d.common = loadCommonWords(filepath.Join(filepath.Dir(d.dir), "pinyin_simp.dict.yaml"))
+	})
+	return d.common
+}
+
 // typing 判断用户是否正在打字：Lua 每次上屏时（最多每 5 秒一次）更新 active.txt。
 func (d *Daemon) typing() bool {
 	info, err := os.Stat(d.path("active.txt"))
@@ -294,14 +305,14 @@ func (d *Daemon) reindexTerms(ctx context.Context, f Folder) {
 		log.Printf("「%s」术语抽取 %d/%d：%s%s", f.Name, done, total, file, note)
 		// 边抽边更新术语表，大文件夹不用等全部完成就能用上；文件很多时每 20 个写一次
 		if done == total || done%20 == 0 || total < 20 {
-			writeTermList(d.termListPath(f.Name), idx.Totals())
+			writeTermList(d.termListPath(f.Name), idx.Totals(), d.commonWords())
 		}
 	})
 	if err != nil {
 		log.Printf("「%s」术语抽取失败：%v", f.Name, err)
 	}
 	if _, statErr := os.Stat(d.termListPath(f.Name)); n > 0 || os.IsNotExist(statErr) {
-		if err := writeTermList(d.termListPath(f.Name), idx.Totals()); err != nil {
+		if err := writeTermList(d.termListPath(f.Name), idx.Totals(), d.commonWords()); err != nil {
 			log.Printf("写术语表失败：%v", err)
 		} else if n > 0 {
 			log.Printf("「%s」术语表已更新：%d 个文件有变化，共 %d 个术语", f.Name, n, len(idx.Totals()))

@@ -127,7 +127,7 @@ function M.func(translation, env)
   local hint_on = ctx:get_option("code_hint")
   local emoji_on = ctx:get_option("emoji")
   local seen_wubi, seen_full_phrase = false, false
-  local pending = predict.candidates(ctx, env.opts)  -- 在第一个候选之后插入
+  local pending, exact = predict.candidates(ctx, env.opts)  -- 在第一个候选之后插入
   for cand in translation:iter() do
     local input = ctx.input:sub(cand.start + 1, cand._end)
     local lookup_mode = input:sub(1, #env.prefix) == env.prefix
@@ -170,9 +170,14 @@ function M.func(translation, env)
           end
         end
       end
+      if pending and exact and cand.type == "sentence" then
+        yield(exact)  -- 首选是拼音凑出来的整句，全拼完全一致的术语排到它前面
+      end
       yield(cand)
       if pending then
-        for _, p in ipairs(pending) do yield(p) end
+        for _, p in ipairs(pending) do
+          if p ~= exact or cand.type ~= "sentence" then yield(p) end
+        end
         pending = nil
       end
     end

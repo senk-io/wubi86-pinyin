@@ -325,3 +325,29 @@ func TestPacerWaitsWhileTyping(t *testing.T) {
 		t.Fatalf("rested %v, want >= 30ms", el)
 	}
 }
+
+func TestKeepTerm(t *testing.T) {
+	common := map[string]bool{"怪物": true}
+	for _, c := range []struct {
+		term string
+		keep bool
+	}{
+		{"断角荒原", true}, {"SenkNet-API", true}, {"ADR", true},
+		{"rules.json", false}, {"docs/a.md", false}, {"owner", false},
+		{"怪物", false}, {"资产相对的修复", false}, {"我的世界", true},
+		{"一个特别特别长的不是术语", false},
+	} {
+		if got := keepTerm(c.term, common); got != c.keep {
+			t.Errorf("keepTerm(%q) = %v, want %v", c.term, got, c.keep)
+		}
+	}
+}
+
+func TestLoadCommonWords(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pinyin_simp.dict.yaml")
+	os.WriteFile(path, []byte("---\nname: x\n...\n\n怪\tguai\t1\n怪物\tguai wu\t1757\n"), 0o600)
+	w := loadCommonWords(path)
+	if !w["怪物"] || w["怪"] || len(w) != 1 {
+		t.Fatalf("common words = %v", w)
+	}
+}
