@@ -6,6 +6,7 @@
 # 用法：sh scripts/install-macos.sh
 # 环境变量：
 #   SQUIRREL_VERSION  指定鼠须管版本（如 1.1.2），默认取 GitHub 上的最新正式版
+#   SQUIRREL_TEAM_ID  期望的签名团队 ID，默认 28HU5A7B46（上游维护者的 Developer ID）
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 echo "wubi86-pinyin 安装脚本（版本 $Format:%h$）"
@@ -37,15 +38,26 @@ install_squirrel() {
   echo "正在下载鼠须管 $version ..."
   curl -fL --progress-bar -o "$pkg" "$releases/download/$version/Squirrel-$version.pkg"
 
-  # 安装前校验包内应用的 Developer ID 签名。不能装完再验：安装包的 postinstall
-  # 会在 Squirrel.app 内部生成预编译数据，之后整包签名校验必然失败。
+  # 安装前校验包内应用的签名。不能装完再验：安装包的 postinstall 会在
+  # Squirrel.app 内部生成预编译数据，之后整包签名校验必然失败。
+  # 上游发布用的签名：Developer ID Application: Yuncao Liu (28HU5A7B46)
   pkgutil --expand-full "$pkg" "$tmp/expanded" >/dev/null
   app=$(find "$tmp/expanded" -type d -name Squirrel.app -prune | head -n 1)
-  if [ -z "$app" ] || ! codesign --verify --deep --strict "$app" 2>/dev/null \
-     || ! codesign -dv "$app" 2>&1 | grep -q '^Authority=Developer ID Application'; then
-    echo "鼠须管安装包签名校验失败，已停止。请到 $releases 手动下载安装。" >&2
+  if [ -z "$app" ]; then
+    echo "安装包里没有找到 Squirrel.app，已停止。" >&2
     exit 1
   fi
+  if ! codesign --verify --deep --strict "$app"; then
+    echo "鼠须管签名校验失败（见上方 codesign 输出），已停止。" >&2
+    exit 1
+  fi
+  # 签名信息里的 Authority 行需要 -vv 才会输出
+  team=$(codesign -dvv "$app" 2>&1 | sed -n 's/^TeamIdentifier=//p')
+  if [ "$team" != "${SQUIRREL_TEAM_ID:-28HU5A7B46}" ]; then
+    echo "鼠须管签名者不符：期望 ${SQUIRREL_TEAM_ID:-28HU5A7B46}，实际 ${team:-无}，已停止。" >&2
+    exit 1
+  fi
+  echo "签名校验通过（TeamIdentifier=$team）。"
 
   # 新安装包下载并校验通过后才卸载旧版，避免中途失败导致没有输入法可用
   if [ -e "$squirrel_app" ]; then
