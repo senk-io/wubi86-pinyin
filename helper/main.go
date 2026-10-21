@@ -90,6 +90,10 @@ func main() {
 }
 
 func cmdTry(ctx context.Context, d *Daemon, recent string) error {
+	if !d.cfg.Continuation {
+		// 不加载模型：续写关闭时用户不需要它，白白占几 GB 内存
+		return fmt.Errorf("续写联想已关闭（config.json 的 continuation）；项目术语用 wubi86d terms 查看")
+	}
 	if recent == "" {
 		return fmt.Errorf("请给出上文，例如：wubi86d try 今天天气")
 	}

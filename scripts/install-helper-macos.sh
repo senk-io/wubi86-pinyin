@@ -116,8 +116,9 @@ launchctl bootstrap "gui/$(id -u)" "$plist"
 squirrel="/Library/Input Methods/Squirrel.app/Contents/MacOS/Squirrel"
 [ -x "$squirrel" ] && "$squirrel" --reload
 
-echo "wubi86d 已安装并在后台运行。试一下："
-"$bin" try 今天天气 || true
+# 这里不调用模型（不跑 try），以免安装一次就把模型载入内存
+echo "wubi86d 已安装并在后台运行。当前的资料文件夹："
+"$bin" folders || true
 echo
 echo "项目资料文件夹：编辑 ${data_dir}/config.json 的 folders，例如"
 echo '  "folders": [{"name": "星辰", "path": "~/work/星辰/docs"}]'
