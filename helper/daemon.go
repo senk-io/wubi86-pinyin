@@ -35,6 +35,7 @@ const (
 	minScore       = 0.3
 	predictTimeout = 8 * time.Second
 	idleAfter      = 30 * time.Second // 最近这么久内有上屏，就算用户在打字
+	startDelay     = 2 * time.Minute  // 启动后多久开始后台抽取
 )
 
 type Daemon struct {
@@ -252,6 +253,12 @@ func (d *Daemon) flushHistory(ctx context.Context) {
 }
 
 func (d *Daemon) reindexLoop(ctx context.Context) {
+	// 登录后先等一会儿再开始后台抽取，不和开机时的其它程序抢资源
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(startDelay):
+	}
 	for {
 		d.reindex(ctx)
 		select {
