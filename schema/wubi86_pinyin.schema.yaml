@@ -48,6 +48,7 @@ engine:
     - ascii_composer
     - recognizer
     - key_binder
+    - lua_processor@*wubi_topup           # 五笔四码顶字，打拼音时不顶
     - speller
     - punctuator
     - selector
@@ -72,7 +73,6 @@ engine:
 speller:
   alphabet: zyxwvutsrqponmlkjihgfedcba
   delimiter: " '"
-  max_code_length: 4                    # 五笔四码，但不顶字上屏，拼音可以继续输入
   auto_select: false
 
 translator:
@@ -116,6 +116,10 @@ wubi_mixed_filter:
   term_max: 3                           # 每次最多插入的项目术语数
   term_min_code: 2                      # 输入码至少几码才补全术语
   predict_max: 2                        # 续写模式下每次最多插入的联想词数
+
+# 五笔四码后继续打字母时顶字上屏；整串还可能是拼音时不顶（见 lua/wubi_topup.lua）
+wubi_topup:
+  code_length: 4
 
 # 项目术语和续写联想，需要安装常驻进程 wubi86d（见 helper/）；没装时不起作用
 wubi_predict:

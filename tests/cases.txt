@@ -13,6 +13,12 @@ wo
 adnt
 # 拼音整句降噪：nihao 不出现"你号"这类整句拼凑；长句仍然可以整句输入
 woshizhongguoren
+# 五笔四码顶字：四码后再打字母，整串已不可能是拼音时先上屏五笔首选；
+# 还可能是拼音时不顶（shuj 是五笔「相间」，但 shujuku 应得到「数据库」）
+!1 wqvbt
+!1 ggtttrwu
+!1 shujuku
+!1 wqvbshujuku
 # emoji 默认关闭，不占候选位置
 ryhv
 # 忘码记录：用拼音打出"器"后，五笔打 kk 时提示完整编码和忘记次数；
