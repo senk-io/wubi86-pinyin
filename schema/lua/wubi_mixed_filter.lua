@@ -15,25 +15,16 @@
 --    - 用全码打出的字词如果有更短的简码（一级、二级、三级简码），注释里标出简码，
 --      如 wqiy -> 你〔简 wq〕（配置 short_hint，默认开）。
 -- 4. 忘码记录：上屏时交给 wubi_memory 记录，见该文件。
--- 5. 项目术语（开关 terms，默认开）：当前资料文件夹的术语里，五笔词码、全拼或拼音首字母
---    以当前输入码开头的，插在第 2 位起，见 wubi_predict.lua。
--- 6. 续写联想（开关 predict，默认关）：上屏时把上文交给 wubi_predict；打下一个词时，
---    匹配当前输入码的联想词同样插在第 2 位起。
 --
 -- 配置（schema 中与 filter 同名的节点）：
 --   dictionary: 用于反查的五笔码表名
---   pinyin_dictionary: 用于给联想词注音的拼音词库
 --   lookup_prefix: 学码模式前缀，默认 "`"
 --   short_hint: 全码打出时是否提示简码，默认 true
---   term_max: 每次最多插入几个术语，默认 3
---   term_min_code: 输入码至少几码才补全术语，默认 2（一码匹配面太宽）
---   predict_max: 每次最多插入几个续写联想词，默认 2
 
--- 去噪、提示、术语都是附加功能，任何一处出错都只跳过它自己，候选照常送出，见 wubi_safe.lua。
+-- 去噪、提示、忘码记录都是附加功能，任何一处出错都只跳过它自己，候选照常送出，见 wubi_safe.lua。
 
 local safe = require("wubi_safe")
 local memory = safe.require("wubi_memory")
-local predict = safe.require("wubi_predict")
 
 local M = {}
 
@@ -50,16 +41,11 @@ local function on_commit(ctx)
     local status = seg.status
     if cand and (status == "kSelected" or status == "kConfirmed") then
       local text = cand.text
-      -- 只记录中文等非 ASCII 上屏；联想词不算忘码
-      if text:find("[\128-\255]") and cand:get_genuine().type ~= "predict" then
+      -- 只记录中文等非 ASCII 上屏
+      if text:find("[\128-\255]") then
         safe.call("memory", memory.record, text, is_from_pinyin(cand))
       end
     end
-  end
-  safe.call("active", predict.touch_active)
-  if ctx:get_option("predict") then
-    local text = ctx:get_commit_text()
-    if text ~= "" then safe.call("predict", predict.on_commit, text) end
   end
 end
 
@@ -67,11 +53,8 @@ local function setup(env)
   local config = env.engine.schema.config
   local ns = env.name_space
   env.reverse = ReverseLookup(config:get_string(ns .. "/dictionary") or "wubi86_jidian")
-  env.pinyin = ReverseLookup(config:get_string(ns .. "/pinyin_dictionary") or "pinyin_simp")
   env.prefix = config:get_string(ns .. "/lookup_prefix") or "`"
   env.short_hint = config:get_bool(ns .. "/short_hint") ~= false
-  env.opts = safe.call("options", predict.options, config, ns) or {}
-  env.opts.wubi, env.opts.pinyin, env.opts.prefix = env.reverse, env.pinyin, env.prefix
   return true
 end
 
@@ -195,23 +178,10 @@ function M.func(translation, env)
     seen_wubi = false,
     seen_full_phrase = false,
   }
-  local pending, exact = safe.call("terms", predict.candidates, ctx, env.opts)  -- 在第一个候选之后插入
   for cand in translation:iter() do
     if not safe.call("filter", is_noise, cand, ctx, env, state) then
-      if pending and exact and cand.type == "sentence" then
-        yield(exact)  -- 首选是拼音凑出来的整句，全拼完全一致的术语排到它前面
-      end
       yield(cand)
-      if pending then
-        for _, p in ipairs(pending) do
-          if p ~= exact or cand.type ~= "sentence" then yield(p) end
-        end
-        pending = nil
-      end
     end
-  end
-  if pending then
-    for _, p in ipairs(pending) do yield(p) end
   end
 end
 

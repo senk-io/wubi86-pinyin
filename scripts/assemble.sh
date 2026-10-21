@@ -16,15 +16,14 @@ case "$variant" in
 esac
 
 mkdir -p "$dest/lua"
-# 两个包共用：拼音词库、术语补全
+# 旧版本的本地模型接入已移除，删掉留下的脚本
+rm -f "$dest/lua/wubi_predict.lua" "$dest/lua/wubi_predict_switch.lua" "$dest/lua/pinyin_filter.lua"
+# 两个包共用：拼音词库
 cp "$root"/data/pinyin_simp.*.yaml "$dest/"
-cp "$root"/schema/lua/wubi_safe.lua "$root"/schema/lua/wubi_predict.lua "$root"/schema/lua/wubi_predict_switch.lua "$dest/lua/"
 cp "$root/schema/$schema.schema.yaml" "$dest/"
 if [ "$variant" = wubi86-pinyin ]; then
   cp "$root"/data/wubi86_jidian*.yaml "$dest/"
-  for f in wubi_mixed_filter wubi_memory wubi_topup; do cp "$root/schema/lua/$f.lua" "$dest/lua/"; done
-else
-  cp "$root/schema/lua/pinyin_filter.lua" "$dest/lua/"
+  for f in wubi_safe wubi_mixed_filter wubi_memory wubi_topup; do cp "$root/schema/lua/$f.lua" "$dest/lua/"; done
 fi
 
 {

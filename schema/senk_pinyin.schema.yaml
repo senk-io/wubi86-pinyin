@@ -4,7 +4,6 @@
 # 拼音（纯拼音，不含五笔）
 # - 全拼、简拼、整句连打；装上可选语言模型后整句更准（scripts/install-grammar-macos.sh）
 # - 开启用户词典，常用字词自动前移
-# - 项目术语补全（需 wubi86d）：术语插在第 2 位起，不占首选
 
 schema:
   schema_id: senk_pinyin
@@ -13,7 +12,7 @@ schema:
   author:
     - wubi86-pinyin contributors
   description: |
-    简体拼音，整句连打，可接本地模型补全项目术语。
+    简体拼音，整句连打。
     词库来自 rime-pinyin-simp（Apache-2.0），详见 data/NOTICE.md。
   dependencies:
     - pinyin_simp
@@ -24,18 +23,11 @@ switches:
     states: [ 中, 英 ]
   - name: full_shape
     states: [ 半角, 全角 ]
-  - name: terms
-    reset: 1
-    states: [ 无术语, 术语 ]
-  - name: predict
-    reset: 0
-    states: [ 无续写, 续写 ]
   - name: ascii_punct
     states: [ 。，, ．， ]
 
 engine:
   processors:
-    - lua_processor@*wubi_predict_switch  # 快捷键轮换资料文件夹
     - ascii_composer
     - recognizer
     - key_binder
@@ -54,7 +46,6 @@ engine:
     - punct_translator
     - script_translator
   filters:
-    - lua_filter@*pinyin_filter         # 项目术语补全、续写联想
     - uniquifier
 
 # 拼写规则与 rime-pinyin-simp 一致：简拼、常见误拼（如 lve/lue、ign/ing）
@@ -73,16 +64,6 @@ translator:
     - xform/([nl])v/$1ü/
     - xform/([nl])ue/$1üe/
     - xform/([jqxy])v/$1u/
-
-pinyin_filter:
-  pinyin_dictionary: pinyin_simp        # 用于给术语注音
-  term_max: 3                           # 每次最多插入的项目术语数
-  term_min_code: 2                      # 输入码至少几码才补全术语
-  predict_max: 2                        # 续写模式下每次最多插入的联想词数
-
-# 项目术语和续写联想，需要安装常驻进程 wubi86d（见 helper/）；没装时不起作用
-wubi_predict:
-  switch_key: "Control+Shift+R"         # 轮换资料文件夹
 
 punctuator:
   import_preset: default

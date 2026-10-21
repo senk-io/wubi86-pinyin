@@ -16,9 +16,6 @@ status=0
 while read -r variant schema cases expected; do
   user="$work/$variant"
   "$root/scripts/assemble.sh" "$user" "$variant"
-  # 模拟已安装 wubi86d：联想相关用例通过 "$ " 行直接读写这些文件
-  mkdir -p "$user/wubi86d"
-  printf '笔记\n工作\n' > "$user/wubi86d/folders.txt"
   export RIME_USER="$user"
   grep -v '^#' "$here/$cases" \
     | "$work/rime_probe" "$shared" "$user" "$schema" 6 2>/dev/null > "$work/actual.txt"
@@ -35,7 +32,7 @@ wubi86-pinyin wubi86_pinyin cases.txt expected.txt
 pinyin senk_pinyin pinyin_cases.txt pinyin_expected.txt
 LIST
 
-# 附加功能出错时基本输入不受影响：把术语/联想、忘码记录模块换成加载即报错或每次调用都报错的版本，
+# 附加功能出错时基本输入不受影响：把忘码记录模块换成加载即报错或每次调用都报错的版本，
 # 基本用例的结果必须和正常时完全一样（见 schema/lua/wubi_safe.lua）。
 [ "${1:-}" = "--update" ] && exit $status
 while read -r variant schema cases; do
@@ -46,16 +43,11 @@ while read -r variant schema cases; do
   for mode in load call; do
     broken="$work/$variant-$mode"
     "$root/scripts/assemble.sh" "$broken" "$variant"
-    mkdir -p "$broken/wubi86d"
-    printf '笔记\n' > "$broken/wubi86d/folders.txt"  # 模拟已装 wubi86d，让术语逻辑真正被调用
-    for m in wubi_predict wubi_memory; do
-      [ -f "$broken/lua/$m.lua" ] || continue
-      if [ "$mode" = load ]; then
-        echo 'error("injected load failure")' > "$broken/lua/$m.lua"
-      else
-        echo 'return setmetatable({}, { __index = function() return function() error("injected call failure") end end })' > "$broken/lua/$m.lua"
-      fi
-    done
+    if [ "$mode" = load ]; then
+      echo 'error("injected load failure")' > "$broken/lua/wubi_memory.lua"
+    else
+      echo 'return setmetatable({}, { __index = function() return function() error("injected call failure") end end })' > "$broken/lua/wubi_memory.lua"
+    fi
     grep -v '^#' "$here/$cases" \
       | RIME_USER="$broken" "$work/rime_probe" "$shared" "$broken" "$schema" 6 2>/dev/null > "$work/broken.txt"
     if diff -u "$work/healthy.txt" "$work/broken.txt"; then
@@ -66,6 +58,5 @@ while read -r variant schema cases; do
   done
 done <<LIST
 wubi86-pinyin wubi86_pinyin fault_cases.txt
-pinyin senk_pinyin pinyin_fault_cases.txt
 LIST
 exit $status
