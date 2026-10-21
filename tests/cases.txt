@@ -11,3 +11,14 @@ wo
 `zhong
 !2 adnt
 adnt
+# 拼音整句降噪：nihao 不出现"你号"这类整句拼凑；长句仍然可以整句输入
+woshizhongguoren
+# emoji 默认关闭，不占候选位置
+ryhv
+# 忘码记录：用拼音打出"器"后，五笔打 kk 时提示完整编码和忘记次数；
+# 再用五笔全码打一次，记录清除，提示消失
+kk
+!6 qi
+kk
+!1 kkd
+kk

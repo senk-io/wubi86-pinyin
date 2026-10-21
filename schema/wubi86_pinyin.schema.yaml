@@ -5,11 +5,12 @@
 # - 五笔候选优先；同一段编码同时用拼音查询，拼音候选附带五笔编码提示
 # - 前缀 `（反引号）：纯拼音"学码"模式，只出拼音候选并显示五笔编码
 # - 开启用户词典，常用字词自动前移
+# - 记录用拼音打出的字词（忘码），之后用五笔打到时提示完整编码
 
 schema:
   schema_id: wubi86_pinyin
   name: 五笔86·拼音
-  version: "0.1.0"
+  version: "0.2.0"
   author:
     - 五笔字形发明人 王永民
     - wubi86-pinyin contributors
@@ -28,6 +29,9 @@ switches:
   - name: code_hint
     reset: 1
     states: [ 无提示, 编码提示 ]
+  - name: emoji
+    reset: 0
+    states: [ 无表情, 表情 ]
   - name: ascii_punct
     states: [ 。，, ．， ]
 
@@ -54,7 +58,7 @@ engine:
     - script_translator@pinyin          # 混输中的拼音
     - script_translator@pinyin_lookup   # 反引号前缀学码模式
   filters:
-    - lua_filter@*wubi_mixed_filter     # 混输去噪 + 五笔编码提示
+    - lua_filter@*wubi_mixed_filter     # 混输去噪、emoji 开关、编码提示、忘码记录
     - uniquifier
 
 speller:

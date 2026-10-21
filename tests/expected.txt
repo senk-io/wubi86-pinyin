@@ -10,3 +10,10 @@ wo: 1.伙 2.我〔q〕 3.喔〔kngf〕 4.窝〔pwkw〕 5.握〔rng〕 6.卧〔ah
 `zhong: 1.中〔k〕 2.种〔tkh〕 3.重〔tgj〕 4.钟〔qkhh〕 5.仲〔wkhh〕 6.众〔www〕
 commit adnt -> 茂
 adnt: 1.茂 2.藏 3.荿
+woshizhongguoren: 1.我是中国人 2.我是 3.我市 4.卧室〔ahpg〕 5.卧式〔ahaa〕 6.我〔q〕
+ryhv: 1.挤眼
+kk: 1.吕 2.器~d 3.嚣~d 4.骂~c 5.吅~g 6.串~h
+commit qi -> 器
+kk: 1.吕 2.器〔kkd 忘1〕 3.嚣~d 4.骂~c 5.吅~g 6.串~h
+commit kkd -> 器
+kk: 1.吕 2.器~d 3.嚣~d 4.骂~c 5.吅~g 6.串~h
