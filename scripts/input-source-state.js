@@ -4,10 +4,11 @@
 ObjC.import('Carbon')
 
 function run(argv) {
-  // 两个键就是 kTISPropertyInputSourceID、kTISPropertyInputSourceIsEnabled 的字符串值
+  // 键就是 kTISPropertyInputSourceID 的字符串值
   const filter = $.NSDictionary.dictionaryWithObjectForKey($(argv[0]), $('TISPropertyInputSourceID'))
-  const list = ObjC.castRefToObject($.TISCreateInputSourceList(filter, true))
-  if (list.count === 0) return 'absent'
-  const enabled = ObjC.unwrap(ObjC.castRefToObject($.TISGetInputSourceProperty(list.objectAtIndex(0), $('TISPropertyInputSourceIsEnabled'))))
-  return enabled === true || enabled === 1 ? 'enabled' : 'disabled'
+  // 第二个参数为 false 时只列出已启用的输入源，为 true 时列出所有已安装的。
+  // 不读 IsEnabled 属性：它的布尔值经 JXA 桥接后读不准（CI 上当前键盘也读成 false）
+  const count = all => ObjC.castRefToObject($.TISCreateInputSourceList(filter, all)).count
+  if (count(false) > 0) return 'enabled'
+  return count(true) > 0 ? 'disabled' : 'absent'
 }
