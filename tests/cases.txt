@@ -22,8 +22,9 @@ kk
 kk
 !1 kkd
 kk
-# 本地模型联想：上屏"今天""天气"后，context.txt 里是刚上屏的词和最近的上文；
+# 续写联想（开关 predict，默认关闭）：上屏"今天""天气"后，context.txt 里是刚上屏的词和最近的上文；
 # 再模拟 wubi86d 按上文序号写出联想词
++ predict
 !1 wygd
 !1 gdrn
 $ sed 1d "$RIME_USER/wubi86d/context.txt"
@@ -45,3 +46,26 @@ $ cat "$RIME_USER/wubi86d/profile.txt"
 $ cat "$RIME_USER/wubi86d/profile.txt"
 @ {Control+Shift+R}
 $ cat "$RIME_USER/wubi86d/profile.txt"
+- predict
+# 项目术语（开关 terms，默认开）：模拟 wubi86d 为「工作」写出术语表并选中「工作」
+$ mkdir -p "$RIME_USER/wubi86d/terms" && printf 'v1\n星辰数据平台\t9\n灰度发布\t5\nSenkNet-API\t3\n' > "$RIME_USER/wubi86d/terms/工作.txt"
+$ printf '工作\n' > "$RIME_USER/wubi86d/profile.txt" && sleep 1
+# 首字母、全拼、五笔词码、英文名前缀都能补全，术语插在第 2 位，首选不变
+xcsj
+xingchen
+jdoc
+hd
+senkn
+# 一码不补全，避免候选被术语挤占
+x
+# 关闭开关后不再补全
+- terms
+xcsj
++ terms
+# 术语表更新后（版本行变化）自动重新加载
+$ sleep 1 && printf 'v2\n灰度发布\t5\n蓝绿部署\t4\n' > "$RIME_USER/wubi86d/terms/工作.txt"
+xcsj
+llbs
+# 切到没有术语表的文件夹：不补全
+$ printf '笔记\n' > "$RIME_USER/wubi86d/profile.txt" && sleep 1
+llbs

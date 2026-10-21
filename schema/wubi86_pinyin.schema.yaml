@@ -11,7 +11,7 @@
 schema:
   schema_id: wubi86_pinyin
   name: 五笔86·拼音
-  version: "0.3.0"
+  version: "0.4.0"
   author:
     - 五笔字形发明人 王永民
     - wubi86-pinyin contributors
@@ -33,15 +33,18 @@ switches:
   - name: emoji
     reset: 0
     states: [ 无表情, 表情 ]
-  - name: predict
+  - name: terms
     reset: 1
-    states: [ 无联想, 联想 ]
+    states: [ 无术语, 术语 ]
+  - name: predict
+    reset: 0
+    states: [ 无续写, 续写 ]
   - name: ascii_punct
     states: [ 。，, ．， ]
 
 engine:
   processors:
-    - lua_processor@*wubi_predict_switch  # 快捷键轮换联想资料文件夹
+    - lua_processor@*wubi_predict_switch  # 快捷键轮换资料文件夹
     - ascii_composer
     - recognizer
     - key_binder
@@ -110,9 +113,11 @@ wubi_mixed_filter:
   dictionary: wubi86_jidian             # 用于反查五笔编码的码表
   pinyin_dictionary: pinyin_simp        # 用于给联想词注音
   lookup_prefix: "`"
-  predict_max: 2                        # 每次最多插入的联想词数
+  term_max: 3                           # 每次最多插入的项目术语数
+  term_min_code: 2                      # 输入码至少几码才补全术语
+  predict_max: 2                        # 续写模式下每次最多插入的联想词数
 
-# 本地模型联想，需要安装常驻进程 wubi86d（见 helper/）；没装时不起作用
+# 项目术语和续写联想，需要安装常驻进程 wubi86d（见 helper/）；没装时不起作用
 wubi_predict:
   switch_key: "Control+Shift+R"         # 轮换资料文件夹
 

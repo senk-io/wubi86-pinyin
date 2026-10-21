@@ -23,7 +23,8 @@ const usage = `用法：wubi86d [-rime-dir 目录] <命令>
   try <上文>         用当前配置生成一次联想并打印，用于检查模型是否可用
   folders            列出可切换的资料文件夹，当前使用的标 *
   use <名称|->       切换资料文件夹；- 表示只用输入历史
-  index              立即索引全部资料文件夹
+  index              立即索引全部资料文件夹（抽取术语）
+  terms [名称]       查看某个资料文件夹的术语表（默认当前文件夹）
   forget-history     清空本机输入历史索引
 `
 
@@ -72,6 +73,8 @@ func main() {
 		err = cmdUse(d, args[1:])
 	case "index":
 		d.reindex(ctx)
+	case "terms":
+		err = cmdTerms(d, args[1:])
 	case "forget-history":
 		err = d.history.Replace(nil)
 		if err == nil {
@@ -116,6 +119,26 @@ func cmdUse(d *Daemon, args []string) error {
 		return err
 	}
 	fmt.Printf("当前资料文件夹：%s\n", orNone(name))
+	return nil
+}
+
+func cmdTerms(d *Daemon, args []string) error {
+	name := d.profile()
+	if len(args) > 0 {
+		name = args[0]
+	}
+	if name == "" {
+		return fmt.Errorf("当前没有选择资料文件夹，请指定名称：wubi86d terms <名称>")
+	}
+	data, err := os.ReadFile(d.termListPath(name))
+	if err != nil {
+		return fmt.Errorf("「%s」还没有术语表，先运行 wubi86d index", name)
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	fmt.Printf("「%s」共 %d 个术语：\n", name, len(lines)-1)
+	for _, line := range lines[1:] {
+		fmt.Println(strings.Replace(line, "\t", "  ×", 1))
+	}
 	return nil
 }
 

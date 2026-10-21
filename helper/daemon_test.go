@@ -58,6 +58,7 @@ func newTestDaemon(t *testing.T, folders []Folder) (*Daemon, *fakeOllama) {
 	cfg := defaultConfig()
 	cfg.OllamaURL = srv.URL
 	cfg.Folders = folders
+	cfg.Continuation = true
 	d, err := newDaemon(t.TempDir(), cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -203,4 +204,59 @@ func TestRunLoopAnswersContext(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Fatal("no suggestion written for context seq 42")
+}
+
+func TestParseTermsKeepsOnlyVerbatim(t *testing.T) {
+	src := "星辰数据平台的灰度发布定在周四晚上，由运维组执行 SenkNet-API 回滚预案。"
+	out := `["星辰数据平台", "灰度发布", "灰度上线", "SenkNet-API", "周", "回滚预案。", "星辰数据平台"]`
+	got := parseTerms(out, src)
+	want := "星辰数据平台,灰度发布,SenkNet-API,回滚预案"
+	if strings.Join(got, ",") != want {
+		t.Fatalf("parseTerms = %v, want %s", got, want)
+	}
+}
+
+func TestTermIndexIncremental(t *testing.T) {
+	notes := t.TempDir()
+	a := filepath.Join(notes, "a.md")
+	os.WriteFile(a, []byte("星辰数据平台上线。星辰数据平台很稳。"), 0o600)
+	os.WriteFile(filepath.Join(notes, "b.txt"), []byte("灰度发布流程"), 0o600)
+	d, fake := newTestDaemon(t, []Folder{{Name: "星辰", Path: notes}})
+	fake.reply = `["星辰数据平台", "灰度发布", "不存在的词"]`
+	ctx := context.Background()
+
+	d.reindex(ctx)
+	data, err := os.ReadFile(d.termListPath("星辰"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if !strings.HasPrefix(lines[0], "v") || strings.Join(lines[1:], "|") != "星辰数据平台\t2|灰度发布\t1" {
+		t.Fatalf("term list = %q", data)
+	}
+
+	// 删除文件后术语随之移除；未改动的文件不重抽
+	os.Remove(a)
+	fake.reply = `[]`
+	d.reindex(ctx)
+	data, _ = os.ReadFile(d.termListPath("星辰"))
+	if got := strings.Join(strings.Split(strings.TrimSpace(string(data)), "\n")[1:], "|"); got != "灰度发布\t1" {
+		t.Fatalf("after delete term list = %q", got)
+	}
+
+	reopened, _ := openTermIndex(d.terms["星辰"].path)
+	if len(reopened.files) != 1 {
+		t.Fatalf("term index not persisted: %d files", len(reopened.files))
+	}
+}
+
+func TestContinuationOffSkipsContext(t *testing.T) {
+	d, _ := newTestDaemon(t, nil)
+	d.cfg.Continuation = false
+	writeAtomic(d.path("context.txt"), []byte("7\n天气\n今天天气\n"))
+	d.poll(context.Background())
+	time.Sleep(100 * time.Millisecond)
+	if _, err := os.Stat(d.path("suggest.txt")); err == nil {
+		t.Fatal("continuation disabled but suggestion written")
+	}
 }

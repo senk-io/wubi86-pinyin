@@ -19,14 +19,16 @@ type Folder struct {
 
 // Config 对应 <rime>/wubi86d/config.json。
 type Config struct {
-	OllamaURL   string   `json:"ollama_url"`
-	ChatModel   string   `json:"chat_model"`
-	EmbedModel  string   `json:"embed_model"`
-	History     bool     `json:"history"`      // 是否把上屏文字记入本机历史，用于检索
-	Folders     []Folder `json:"folders"`      // 可切换的资料文件夹
-	TopK        int      `json:"top_k"`        // 检索条数
-	MaxPhrases  int      `json:"max_phrases"`  // 每次给出的联想数
-	AllowRemote bool     `json:"allow_remote"` // 默认只允许本机模型地址
+	OllamaURL    string   `json:"ollama_url"`
+	ChatModel    string   `json:"chat_model"`
+	EmbedModel   string   `json:"embed_model"`
+	Terms        bool     `json:"terms"`        // 从资料文件夹抽取项目术语，供输入法按编码补全
+	Continuation bool     `json:"continuation"` // 根据上文猜下一个词（默认关闭）
+	History      bool     `json:"history"`      // 续写模式下，是否把上屏文字记入本机历史用于检索
+	Folders      []Folder `json:"folders"`      // 可切换的资料文件夹
+	TopK         int      `json:"top_k"`        // 检索条数
+	MaxPhrases   int      `json:"max_phrases"`  // 每次给出的联想数
+	AllowRemote  bool     `json:"allow_remote"` // 默认只允许本机模型地址
 }
 
 func defaultConfig() Config {
@@ -34,6 +36,7 @@ func defaultConfig() Config {
 		OllamaURL:  "http://127.0.0.1:11434",
 		ChatModel:  "qwen2.5:7b",
 		EmbedModel: "bge-m3",
+		Terms:      true,
 		History:    true,
 		TopK:       4,
 		MaxPhrases: 5,

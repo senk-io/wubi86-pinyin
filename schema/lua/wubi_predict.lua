@@ -1,12 +1,13 @@
--- 本地模型联想（输入法一侧）
+-- 项目术语与本地模型联想（输入法一侧）
 --
--- 与常驻进程 wubi86d 通过 <Rime 用户目录>/wubi86d/ 下的文件交换数据（格式见 helper/daemon.go）：
---   上屏后写 context.txt（序号、刚上屏的文字、最近的上文），wubi86d 生成联想后写 suggest.txt。
---   这里只做读写小文件这类毫秒级操作，从不等待模型。
--- 只有 wubi86d 已经初始化过该目录（存在 folders.txt）时才写上文，没装 wubi86d 就什么都不写。
+-- 与常驻进程 wubi86d 通过 <Rime 用户目录>/wubi86d/ 下的文件交换数据（格式见 helper/daemon.go）。
+-- 这里只做读写小文件这类毫秒级操作，从不等待模型。没装 wubi86d（不存在 folders.txt）时什么都不做。
 --
--- 联想词的展示：用户开始打下一个词时，如果输入码是某个联想词的五笔编码、全拼或拼音首字母的前缀，
--- 就把它插到候选第 2 位起（首选不动，保留五笔简码按空格上屏的习惯）。
+-- 1. 项目术语：wubi86d 从当前资料文件夹抽出项目名、系统名、内部叫法等，写成 terms/<名称>.txt。
+--    输入码是某个术语的五笔词码、全拼或拼音首字母的前缀时，把术语插到候选第 2 位起。
+-- 2. 续写联想（默认关闭）：上屏后写 context.txt，wubi86d 生成联想后写 suggest.txt，匹配方式同上。
+--
+-- 首选始终不动，保留五笔简码按空格上屏的习惯。
 
 local M = {}
 
@@ -91,6 +92,51 @@ function M.suggestions()
   return cached.profile, cached.phrases
 end
 
+-- 当前资料文件夹名：每秒最多读一次 profile.txt
+local profile_name, profile_at = "", -1
+local function current_profile()
+  local now = os.time()
+  if now ~= profile_at then
+    profile_at = now
+    profile_name = ((read_lines("profile.txt") or {})[1] or "")
+  end
+  return profile_name
+end
+
+-- 与 helper/daemon.go 的 safeName 一致
+local function safe_name(name)
+  return (name:gsub('[/\\:*?"<>|%c]', "_"))
+end
+
+-- 当前资料文件夹的术语表：{ {text=, weight=}, ... }，按出现次数降序。
+-- 每秒最多检查一次版本行，有变化才重新加载。
+local terms = { profile = nil, version = nil, list = {}, checked = -1 }
+function M.terms()
+  local profile = current_profile()
+  if profile == "" then return "", {} end
+  local now = os.time()
+  if terms.profile == profile and terms.checked == now then
+    return profile, terms.list
+  end
+  terms.checked = now
+  local f = io.open(base_dir() .. "/terms/" .. safe_name(profile) .. ".txt", "r")
+  if not f then
+    terms.profile, terms.version, terms.list = profile, nil, {}
+    return profile, terms.list
+  end
+  local version = f:read("l")
+  if terms.profile ~= profile or terms.version ~= version then
+    local list = {}
+    for line in f:lines() do
+      local text, weight = line:match("^(.-)\t(%d+)$")
+      if text and text ~= "" then list[#list + 1] = { text = text, weight = tonumber(weight) } end
+    end
+    terms.profile, terms.version, terms.list = profile, version, list
+  end
+  f:close()
+  return profile, terms.list
+end
+
 -- 一个联想词能被哪些输入码前缀匹配：五笔词码、全拼、拼音首字母
 -- wubi / pinyin 是 ReverseLookup 对象
 local function first_code(codes, longest)
@@ -128,14 +174,33 @@ function M.codes(phrase, wubi, pinyin)
     end
     if full then result[#result + 1] = wubi_word_code(full) end
   end
-  local spelled, initials = {}, {}
+  -- 拼音：汉字取第一个读音；连续的英文字母和数字原样作为一节（如 SenkNet-API → senknet api）
+  local spelled, initials, ascii = {}, {}, ""
+  local function flush_ascii()
+    if ascii ~= "" then
+      spelled[#spelled + 1] = ascii:lower()
+      initials[#initials + 1] = ascii:sub(1, 1):lower()
+      ascii = ""
+    end
+  end
   for _, cp in utf8.codes(phrase) do
-    local py = pinyin:lookup(utf8.char(cp)):match("%S+")
-    if not py then spelled = nil break end
-    spelled[#spelled + 1] = py
-    initials[#initials + 1] = py:sub(1, 1)
+    local ch = utf8.char(cp)
+    if ch:match("^%w$") then
+      ascii = ascii .. ch
+    else
+      flush_ascii()
+      local py = pinyin:lookup(ch):match("%S+")
+      if py then
+        spelled[#spelled + 1] = py
+        initials[#initials + 1] = py:sub(1, 1)
+      elseif cp >= 0x80 then
+        spelled = nil
+        break
+      end
+    end
   end
   if spelled then
+    flush_ascii()
     result[#result + 1] = table.concat(spelled)
     result[#result + 1] = table.concat(initials)
   end
@@ -166,6 +231,7 @@ function M.next_profile()
     end
   end
   write_file("profile.txt", next_name .. "\n")
+  profile_name, profile_at = next_name, os.time()
   -- 换了资料，用同样的上文请 wubi86d 重算一次；刚上屏一栏留空，不会重复记入历史
   if seq then
     counter = counter + 1

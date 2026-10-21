@@ -51,7 +51,8 @@ func (o *Ollama) post(ctx context.Context, path string, req, resp any) error {
 }
 
 // Generate 生成一段文本。keep_alive 让模型常驻内存，避免每次冷启动。
-func (o *Ollama) Generate(ctx context.Context, system, prompt string, maxTokens int) (string, error) {
+// format 非空时按该 JSON Schema 约束输出（Ollama 的结构化输出）。
+func (o *Ollama) Generate(ctx context.Context, system, prompt string, maxTokens int, format any) (string, error) {
 	req := map[string]any{
 		"model":      o.chatModel,
 		"system":     system,
@@ -62,6 +63,9 @@ func (o *Ollama) Generate(ctx context.Context, system, prompt string, maxTokens 
 			"num_predict": maxTokens,
 			"temperature": 0.3,
 		},
+	}
+	if format != nil {
+		req["format"] = format
 	}
 	var resp struct {
 		Response string `json:"response"`

@@ -20,7 +20,8 @@ import (
 //	suggest.txt  本进程写：第 1 行对应的序号，第 2 行当前资料文件夹名，之后每行一个联想词
 //	profile.txt  当前使用的资料文件夹名（空表示只用输入历史）；Lua 快捷键或 `wubi86d use` 写
 //	folders.txt  本进程写：可切换的文件夹名，每行一个，供 Lua 快捷键轮换
-//	index/       向量索引
+//	terms/<名称>.txt  本进程写：该文件夹的项目术语表，第 1 行版本号，之后「术语<TAB>次数」
+//	index/       向量索引与术语索引
 //
 // 不监听任何端口；唯一的网络访问是本机的 Ollama。
 const (
@@ -41,6 +42,7 @@ type Daemon struct {
 	mu      sync.Mutex
 	history *Store
 	folders map[string]*Store
+	terms   map[string]*TermIndex
 
 	lastSeq  string
 	lastStat time.Time
@@ -49,16 +51,21 @@ type Daemon struct {
 }
 
 func newDaemon(dir string, cfg Config) (*Daemon, error) {
-	if err := os.MkdirAll(filepath.Join(dir, "index"), 0o700); err != nil {
-		return nil, err
+	for _, sub := range []string{"index", "terms"} {
+		if err := os.MkdirAll(filepath.Join(dir, sub), 0o700); err != nil {
+			return nil, err
+		}
 	}
-	d := &Daemon{dir: dir, cfg: cfg, llm: newOllama(cfg), folders: map[string]*Store{}}
+	d := &Daemon{dir: dir, cfg: cfg, llm: newOllama(cfg), folders: map[string]*Store{}, terms: map[string]*TermIndex{}}
 	var err error
 	if d.history, err = openStore(d.indexPath("history")); err != nil {
 		return nil, err
 	}
 	for _, f := range cfg.Folders {
 		if d.folders[f.Name], err = openStore(d.indexPath("folder-" + f.Name)); err != nil {
+			return nil, err
+		}
+		if d.terms[f.Name], err = openTermIndex(d.indexPath("terms-" + f.Name)); err != nil {
 			return nil, err
 		}
 	}
@@ -78,7 +85,7 @@ func (d *Daemon) indexPath(name string) string {
 // safeName 把文件夹名变成可用作文件名的形式（中文保留，路径分隔符等替换掉）。
 func safeName(s string) string {
 	return strings.Map(func(r rune) rune {
-		if strings.ContainsRune(`/\:*?"<>|`, r) || r < 32 {
+		if strings.ContainsRune(`/\:*?"<>|`, r) || r < 32 || r == 127 { // 与 Lua 的 %c 一致
 			return '_'
 		}
 		return r
@@ -111,6 +118,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 }
 
 func (d *Daemon) poll(ctx context.Context) {
+	if !d.cfg.Continuation {
+		return
+	}
 	info, err := os.Stat(d.path("context.txt"))
 	if err != nil || info.ModTime().Equal(d.lastStat) {
 		return
@@ -157,7 +167,7 @@ func (d *Daemon) predict(ctx context.Context, seq, recent string) error {
 	if err != nil {
 		log.Printf("检索失败，仅用上文联想：%v", err)
 	}
-	out, err := d.llm.Generate(ctx, systemPrompt(d.cfg.MaxPhrases), userPrompt(recent, refs), 64)
+	out, err := d.llm.Generate(ctx, systemPrompt(d.cfg.MaxPhrases), userPrompt(recent, refs), 96, stringList)
 	if err != nil {
 		return err
 	}
@@ -245,21 +255,53 @@ func (d *Daemon) reindex(ctx context.Context) {
 			log.Printf("资料文件夹「%s」不可用：%v", f.Name, err)
 			continue
 		}
-		// 索引时先复制一份，求向量期间不阻塞联想
+		if d.cfg.Terms {
+			d.reindexTerms(ctx, f)
+		}
+		if d.cfg.Continuation {
+			d.reindexVectors(ctx, f)
+		}
+	}
+}
+
+func (d *Daemon) termListPath(name string) string {
+	return filepath.Join(d.dir, "terms", safeName(name)+".txt")
+}
+
+func (d *Daemon) reindexTerms(ctx context.Context, f Folder) {
+	idx := d.terms[f.Name]
+	n, err := idx.update(ctx, d.llm, f.Path, func(file string) {
+		log.Printf("「%s」术语抽取：%s", f.Name, file)
+		// 边抽边更新术语表，大文件夹不用等全部完成就能用上
+		writeTermList(d.termListPath(f.Name), idx.Totals())
+	})
+	if err != nil {
+		log.Printf("「%s」术语抽取失败：%v", f.Name, err)
+	}
+	if _, statErr := os.Stat(d.termListPath(f.Name)); n > 0 || os.IsNotExist(statErr) {
+		if err := writeTermList(d.termListPath(f.Name), idx.Totals()); err != nil {
+			log.Printf("写术语表失败：%v", err)
+		} else if n > 0 {
+			log.Printf("「%s」术语表已更新：%d 个文件有变化，共 %d 个术语", f.Name, n, len(idx.Totals()))
+		}
+	}
+}
+
+func (d *Daemon) reindexVectors(ctx context.Context, f Folder) {
+	// 索引时先复制一份，求向量期间不阻塞联想
+	d.mu.Lock()
+	work := &Store{path: d.folders[f.Name].path, entries: d.folders[f.Name].entries}
+	d.mu.Unlock()
+	n, err := indexFolder(ctx, d.llm, work, f.Path)
+	if err != nil {
+		log.Printf("索引「%s」失败：%v", f.Name, err)
+		return
+	}
+	if n > 0 {
 		d.mu.Lock()
-		work := &Store{path: d.folders[f.Name].path, entries: d.folders[f.Name].entries}
+		d.folders[f.Name] = work
 		d.mu.Unlock()
-		n, err := indexFolder(ctx, d.llm, work, f.Path)
-		if err != nil {
-			log.Printf("索引「%s」失败：%v", f.Name, err)
-			continue
-		}
-		if n > 0 {
-			d.mu.Lock()
-			d.folders[f.Name] = work
-			d.mu.Unlock()
-			log.Printf("已索引「%s」：%d 个文件有更新，共 %d 段", f.Name, n, work.Len())
-		}
+		log.Printf("已索引「%s」：%d 个文件有更新，共 %d 段", f.Name, n, work.Len())
 	}
 }
 

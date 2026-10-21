@@ -16,18 +16,21 @@
 - **emoji 开关**：码表自带的 emoji 默认不出现，不占候选位置；需要时打开开关 `emoji`。
 - 开关 `code_hint` 可以关闭编码提示。
 
-### 本地模型联想（可选）
+### 项目术语补全（可选，需要本地模型）
 
-装上常驻进程 `wubi86d` 后，每次上屏，本机的 7B 模型会结合你的输入历史和资料文件夹（RAG）推测下一个词。打下一个词时，匹配的联想词出现在第 2 位，注释为〔联想〕或〔联想·文件夹名〕。首选不变，不会打乱五笔简码的空格习惯。
+每个项目都有自己的叫法：项目名、系统名、模块名、内部代号、专业术语。这些词码表里没有，用五笔或拼音都很难打。装上常驻进程 `wubi86d` 后，本机的 7B 模型会从你指定的项目资料文件夹里把这些叫法抽出来做成术语表；打字时，只要输入码是某个术语的五笔词码、全拼或拼音首字母的开头，这个术语就出现在第 2 位，注释为〔术语·项目名〕。首选不变，不会打乱五笔简码的空格习惯。
+
+例如资料里有「星辰数据平台」，打 `xcsj`、`xingchen` 或五笔词码 `jdoc` 都能补全；英文名按字母拼写匹配，`senkn` 能补全 `SenkNet-API`。
 
 ```sh
 sh scripts/install-helper-macos.sh   # 安装 Ollama、qwen2.5:7b、bge-m3 和 wubi86d，并设为登录后自动运行
 ```
 
-- **资料文件夹**：在 `~/Library/Rime/wubi86d/config.json` 的 `folders` 里添加，例如 `{"name": "笔记", "path": "~/Documents/笔记"}`。可以添加多个。
-- **切换资料文件夹**：打字时按 `Control+Shift+R` 轮换，也可以运行 `wubi86d use 笔记`；`wubi86d folders` 查看全部。
-- **输入历史**：只存在本机；在 `config.json` 里把 `history` 设为 `false` 可以关闭，运行 `wubi86d forget-history` 可以清空。
-- 开关 `predict` 可以临时关闭联想。
+- **项目资料文件夹**：在 `~/Library/Rime/wubi86d/config.json` 的 `folders` 里添加，例如 `{"name": "星辰", "path": "~/work/星辰/docs"}`。可以添加多个，每个项目一个。目前读取 `.md` 和 `.txt`。
+- **切换项目**：打字时按 `Control+Shift+R` 轮换，也可以运行 `wubi86d use 星辰`；`wubi86d folders` 查看全部。
+- **查看和更新术语表**：`wubi86d terms` 查看当前项目抽出的术语；`wubi86d index` 立即重新抽取（平时每 5 分钟检查一次，只处理新增或改动的文件）。
+- 开关 `terms` 可以临时关闭术语补全。
+- **续写联想**（默认关闭）：根据上文猜下一个词。在 `config.json` 里把 `continuation` 设为 `true` 并打开开关 `predict` 后启用；这个模式会把上屏文字记入本机输入历史用于检索，`history` 设为 `false` 可以不记，`wubi86d forget-history` 可以清空。
 - 不开任何端口，模型地址默认只允许本机。细节见 [docs/architecture.md](docs/architecture.md)。
 
 ## 安装
@@ -74,7 +77,7 @@ tests/run.sh --update   # 修改方案后重新生成期望结果
 
 1. 基础方案（本版本）
 2. 记忆与纠错：记录"忘码"的字并加强提示（已完成）；常见拆字错误容错（进行中）
-3. 本地模型（可选）：常驻进程 wubi86d 调用 Ollama，结合输入历史与资料文件夹做 RAG 联想（已完成 macOS）
+3. 本地模型（可选）：常驻进程 wubi86d 调用 Ollama，从项目资料文件夹抽取术语供补全；可选的续写联想（已完成 macOS）
 4. 打包与发布
 5. 语音输入（按住说话）
 6. 扩展：提示词片段与本地脚本入口
