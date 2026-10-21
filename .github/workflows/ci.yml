@@ -41,20 +41,3 @@ jobs:
           tests/bench.sh "$RUNNER_TEMP/zh-hans-t-essay-bgw.gram" 34
           tests/bench.sh "$RUNNER_TEMP/zh-hans-t-essay-bgw.gram" 34 pinyin
 
-  helper:
-    runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: helper
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: helper/go.mod
-      - run: go vet ./...
-      - run: go test -race ./...
-      - name: Cross-compile
-        run: |
-          GOOS=darwin GOARCH=arm64 go build -o /dev/null .
-          GOOS=darwin GOARCH=amd64 go build -o /dev/null .
-          GOOS=windows GOARCH=amd64 go build -o /dev/null .

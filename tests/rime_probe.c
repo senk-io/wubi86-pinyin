@@ -1,9 +1,9 @@
 // 用 librime 驱动方案：逐行读取输入码，打印前 N 个候选及注释。
 // 用法：rime_probe <shared_dir> <user_dir> <schema_id> [n]  （stdin 每行一个输入码）
 // 输入行以 "!" 开头表示"选第 k 个候选上屏"，例如 "!2 ggtt"，用于测试用户词频。
-// 以 "$ " 开头的行交给 shell 执行（用于模拟 wubi86d 写文件），其输出原样打印。
+// 以 "$ " 开头的行交给 shell 执行（用于在用例中准备或检查文件），其输出原样打印。
 // 以 "@ " 开头的行只发送按键序列、不打印候选，例如 "@ {Control+Shift+R}"。
-// "+ 开关名" / "- 开关名" 打开或关闭方案开关，例如 "+ predict"。
+// "+ 开关名" / "- 开关名" 打开或关闭方案开关，例如 "+ emoji"。
 #include <rime_api.h>
 #include <stdio.h>
 #include <stdlib.h>

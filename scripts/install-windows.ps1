@@ -45,19 +45,18 @@ switch ($Variant) {
   default { throw "未知的安装包：$Variant（可选 wubi86-pinyin、pinyin）" }
 }
 
-# 两个包共用：拼音词库、术语补全
+# 两个包共用：拼音词库
 Copy-Item (Join-Path $root "data\pinyin_simp.*.yaml") $rimeDir -Force
-foreach ($f in @("wubi_safe", "wubi_predict", "wubi_predict_switch")) {
-  Copy-Item (Join-Path $root "schema\lua\$f.lua") (Join-Path $rimeDir "lua") -Force
-}
 Copy-Item (Join-Path $root "schema\$schema.schema.yaml") $rimeDir -Force
+# 旧版本的本地模型接入已移除，删掉留下的脚本
+foreach ($f in @("wubi_predict", "wubi_predict_switch", "pinyin_filter")) {
+  Remove-Item (Join-Path $rimeDir "lua\$f.lua") -Force -ErrorAction SilentlyContinue
+}
 if ($Variant -eq "wubi86-pinyin") {
   Copy-Item (Join-Path $root "data\wubi86_jidian*.yaml") $rimeDir -Force
-  foreach ($f in @("wubi_mixed_filter", "wubi_memory", "wubi_topup")) {
+  foreach ($f in @("wubi_safe", "wubi_mixed_filter", "wubi_memory", "wubi_topup")) {
     Copy-Item (Join-Path $root "schema\lua\$f.lua") (Join-Path $rimeDir "lua") -Force
   }
-} else {
-  Copy-Item (Join-Path $root "schema\lua\pinyin_filter.lua") (Join-Path $rimeDir "lua") -Force
 }
 
 # default.custom.yaml：本脚本生成的直接重新生成；用户自己的不覆盖，避免丢掉其它方案

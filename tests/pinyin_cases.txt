@@ -12,20 +12,3 @@ wqvb
 # 用户词频：选过的词下次靠前
 !3 shi
 shi
-# 项目术语：全拼、首字母、英文名前缀补全，插在第 2 位；一码不补全；开关可关
-$ mkdir -p "$RIME_USER/wubi86d/terms" && printf 'v1\n星辰数据平台\t9\n灰度发布\t5\nSenkNet-API\t3\n断角荒原\t2\n' > "$RIME_USER/wubi86d/terms/工作.txt"
-$ printf '工作\n' > "$RIME_USER/wubi86d/profile.txt" && sleep 1
-xcsj
-xingchen
-hd
-senkn
-x
-duanjiaohuangyuan
-djhy
-- terms
-xcsj
-+ terms
-# 快捷键切到下一个文件夹（工作 → 无）：不再补全
-@ {Control+Shift+R}
-$ cat "$RIME_USER/wubi86d/profile.txt"
-xcsj

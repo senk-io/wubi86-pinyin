@@ -1,6 +1,0 @@
-# 附加功能（术语、联想）出错时，这些基本输入的结果必须和正常时一样
-nihao
-zhongguo
-xian
-woshizhongguoren
-!1 shujuku
