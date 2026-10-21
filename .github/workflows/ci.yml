@@ -55,6 +55,15 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+      - name: Input source query reads the system's real state
+        run: |
+          q() { osascript -l JavaScript scripts/input-source-state.js "$1"; }
+          # 当前正在用的键盘一定是已启用的
+          cur=$(osascript -l JavaScript -e 'ObjC.import("Carbon"); ObjC.unwrap(ObjC.castRefToObject($.TISGetInputSourceProperty($.TISCopyCurrentKeyboardInputSource(), $("TISPropertyInputSourceID"))))')
+          echo "current=$cur state=$(q "$cur") ABC=$(q com.apple.keylayout.ABC) US=$(q com.apple.keylayout.US)"
+          [ "$(q "$cur")" = enabled ]
+          [ "$(q no.such.input.source)" = absent ]
+          [ "$(q im.rime.inputmethod.Squirrel.Hans)" = absent ]
       - name: Preview changes nothing
         run: |
           snapshot() {

@@ -56,7 +56,6 @@ log_file=""
 lock_held=0
 rime_changed=0
 rime_existed=0
-source_enabled_by_us=0
 tmp=""
 
 log() {
@@ -72,19 +71,25 @@ cleanup() {
 trap cleanup EXIT
 
 squirrel_running() { pgrep -x Squirrel >/dev/null 2>&1; }
-source_enabled() {
-  defaults read com.apple.HIToolbox AppleEnabledInputSources 2>/dev/null | grep -q "$bundle_id"
+# 鼠须管简体模式在系统输入法服务里的状态：enabled、disabled、absent，查不到时为 unknown。
+# 不看 com.apple.HIToolbox 偏好文件，它可能和实际状态不一致（见 scripts/input-source-state.js）
+source_state() {
+  state=$(osascript -l JavaScript "$root/scripts/input-source-state.js" "$input_mode" 2>/dev/null) || state=unknown
+  case "$state" in enabled|disabled|absent) ;; *) state=unknown ;; esac
+  printf '%s\n' "$state"
+}
+# 鼠须管 1.1.2 的 --register-input-source 指向错误路径，--enable-input-source 在系统认为已启用时什么也不做，
+# 所以脚本不尝试注册或启用，只说明怎么手动添加
+source_hint() {
+  case "$(source_state)" in
+    enabled) echo "鼠须管已在系统里启用" ;;
+    unknown) echo "无法查询鼠须管是否已启用（不影响安装）。如果菜单里没有它，请在「系统设置 → 键盘 → 输入法」里添加" ;;
+    *) echo "鼠须管还没有启用：请在「系统设置 → 键盘 → 输入法」里添加；如果添加后是灰色、选不了，注销后重新登录一次" ;;
+  esac
 }
 
 rollback() {
   log "回滚：开始"
-  if [ "$source_enabled_by_us" = 1 ]; then
-    if "$squirrel" --disable-input-source >>"$log_file" 2>&1; then
-      log "回滚：已从系统输入法列表移除鼠须管（本次是脚本加进去的）"
-    else
-      log "回滚：移除输入法失败，请在「系统设置 → 键盘 → 输入法」里手动移除鼠须管"
-    fi
-  fi
   if [ "$rime_changed" = 1 ]; then
     # 不删除任何东西：改动过的目录改名留存，再从备份恢复
     failed="$rime_dir.failed-$stamp"
@@ -145,14 +150,14 @@ if pgrep -x installer >/dev/null 2>&1; then busy=1; fi
 [ -f "$root/schema/$schema.schema.yaml" ]; check $? "方案文件 schema/$schema.schema.yaml 存在"
 
 if [ -x "$squirrel" ]; then
-  installed=$(defaults read "$squirrel_app/Contents/Info" CFBundleShortVersionString 2>/dev/null || echo "未知")
+  installed=$(plutil -extract CFBundleShortVersionString raw -o - "$squirrel_app/Contents/Info.plist" 2>/dev/null || echo "未知")
   echo "  [信息] 已安装鼠须管 ${installed}：不会卸载或重装"
 else
   installed=""
   echo "  [信息] 未安装鼠须管：将安装固定版本 $squirrel_version"
 fi
 if squirrel_running; then echo "  [信息] 鼠须管进程正在运行"; else echo "  [信息] 鼠须管进程没有运行"; fi
-if source_enabled; then echo "  [信息] 鼠须管已在系统输入法列表里"; else echo "  [信息] 鼠须管不在系统输入法列表里"; fi
+echo "  [信息] $(source_hint)"
 
 if [ "$apply" = 1 ] && [ ! -r /dev/tty ]; then
   check 1 "执行模式需要在终端里运行（要输入 yes 确认）"
@@ -175,14 +180,12 @@ if [ -z "$installed" ]; then
 fi
 echo "  $n. 把方案「${schema_name}」的文件复制到 ${rime_dir}（default.custom.yaml 的处理规则见脚本注释）"
 n=$((n + 1))
-echo "  $n. 如果鼠须管不在系统输入法列表里，用它自带的 --register-input-source / --enable-input-source 加入"
-n=$((n + 1))
 echo "  $n. 再查一次内存压力，然后用 --reload 通知鼠须管重新部署，等待部署结果（最多 ${deploy_timeout} 秒）"
 echo "     鼠须管进程没有运行时不部署，也不手动启动它，文件会在它下次启动时生效"
 n=$((n + 1))
-echo "  $n. 验证：鼠须管进程在运行、在系统输入法列表里、部署出的方案文件存在"
+echo "  $n. 验证：鼠须管进程在运行、部署出的方案文件存在；不会注册、启用或停用输入法"
 echo
-echo "任何一步失败都会停止并回滚：恢复 ${rime_dir}、撤销本次加入的输入法。"
+echo "任何一步失败都会停止并回滚：恢复 ${rime_dir}。"
 echo "日志写到 $log_dir/install-$stamp.log"
 
 if [ "$apply" = 0 ]; then
@@ -271,23 +274,10 @@ elif [ -f "$backup_dir/Rime/default.custom.yaml" ]; then
 fi
 log "第 3 步完成：方案文件已复制到 $rime_dir"
 
-# 4. 加入系统输入法列表
-if source_enabled; then
-  log "第 4 步：鼠须管已在系统输入法列表里，跳过"
-else
-  source_enabled_by_us=1
-  "$squirrel" --register-input-source >>"$log_file" 2>&1 || fail "注册输入法失败（见日志）"
-  "$squirrel" --enable-input-source "$input_mode" >>"$log_file" 2>&1 || fail "启用输入法失败（见日志）"
-  i=0
-  while [ "$i" -lt 10 ] && ! source_enabled; do sleep 1; i=$((i + 1)); done
-  source_enabled || fail "鼠须管仍不在系统输入法列表里"
-  log "第 4 步完成：已把鼠须管加入系统输入法列表"
-fi
-
-# 5. 重新部署
+# 4. 重新部署
 deployed=0
 if ! squirrel_running; then
-  log "第 5 步：鼠须管进程没有运行，不部署。本脚本不会手动启动输入法。"
+  log "第 4 步：鼠须管进程没有运行，不部署。本脚本不会手动启动输入法。"
   log "  文件已就位，鼠须管下次启动时会自动部署。刚安装完时系统通常要注销后重新登录才会启动它，是否注销由你决定。"
 else
   pressure=$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null || echo "?")
@@ -317,16 +307,15 @@ else
     *) fail "部署有失败：${result}（见 ${rime_log}）" ;;
   esac
   deployed=1
-  log "第 5 步完成：部署结果 $result"
+  log "第 4 步完成：部署结果 $result"
 fi
 
-# 6. 验证
+# 5. 验证
 if [ "$deployed" = 1 ]; then
   squirrel_running || fail "部署后鼠须管进程不在运行"
   [ -f "$rime_dir/build/$schema.schema.yaml" ] || fail "没有找到部署出的 build/$schema.schema.yaml"
 fi
-source_enabled || fail "鼠须管不在系统输入法列表里"
-log "第 6 步完成：验证通过"
+log "第 5 步完成：验证通过。$(source_hint)"
 log "安装完成。备份在 ${backup_dir}，日志在 $log_file"
 echo
 echo "请在菜单栏选择鼠须管，确认打 ${test_hint}。"
