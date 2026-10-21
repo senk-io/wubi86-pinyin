@@ -8,6 +8,7 @@
 #   SQUIRREL_VERSION  指定鼠须管版本（如 1.1.2），默认取 GitHub 上的最新正式版
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
+echo "wubi86-pinyin 安装脚本（版本 $Format:%h$）"
 rime_dir="$HOME/Library/Rime"
 squirrel_app="/Library/Input Methods/Squirrel.app"
 squirrel="$squirrel_app/Contents/MacOS/Squirrel"
@@ -61,16 +62,19 @@ install_squirrel
 
 mkdir -p "$rime_dir"
 
-# 不覆盖用户已有的 default.custom.yaml，避免丢掉其它方案
-keep=""
-if [ -f "$rime_dir/default.custom.yaml" ]; then
-  keep="$rime_dir/default.custom.yaml.keep"
-  cp "$rime_dir/default.custom.yaml" "$keep"
+# 已有的 default.custom.yaml 如果没有启用本方案，备份后替换，备份路径会打印出来
+custom="$rime_dir/default.custom.yaml"
+if [ -f "$custom" ] && ! grep -q 'wubi86_pinyin' "$custom"; then
+  backup="$custom.bak-$(date +%Y%m%d%H%M%S)"
+  mv "$custom" "$backup"
+  echo "原有的 default.custom.yaml 已备份到 $backup ，其中的其它方案可以自行合并回来。"
+elif [ -f "$custom" ]; then
+  keep="$custom.keep"
+  cp "$custom" "$keep"
 fi
 "$root/scripts/assemble.sh" "$rime_dir"
-if [ -n "$keep" ]; then
-  mv "$keep" "$rime_dir/default.custom.yaml"
-  echo "保留了你原有的 default.custom.yaml，请在 schema_list 中加入：- schema: wubi86_pinyin"
+if [ -n "${keep:-}" ]; then
+  mv "$keep" "$custom"
 fi
 
 "$squirrel" --enable-input-source >/dev/null 2>&1 || true
