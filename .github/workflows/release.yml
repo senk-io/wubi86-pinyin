@@ -3,6 +3,11 @@ name: release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "版本号，如 v0.5.0（在当前提交上创建这个标签）"
+        required: true
 
 permissions:
   contents: write
@@ -36,4 +41,5 @@ jobs:
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes
+          VERSION: ${{ inputs.version || github.ref_name }}
+        run: gh release create "$VERSION" dist/* --target "$GITHUB_SHA" --generate-notes
