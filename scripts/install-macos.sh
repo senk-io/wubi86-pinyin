@@ -150,7 +150,8 @@ if pgrep -x installer >/dev/null 2>&1; then busy=1; fi
 [ -f "$root/schema/$schema.schema.yaml" ]; check $? "方案文件 schema/$schema.schema.yaml 存在"
 
 if [ -x "$squirrel" ]; then
-  installed=$(plutil -extract CFBundleShortVersionString raw -o - "$squirrel_app/Contents/Info.plist" 2>/dev/null || echo "未知")
+  # 鼠须管的 Info.plist 只有 CFBundleVersion，没有 CFBundleShortVersionString
+  installed=$(plutil -extract CFBundleVersion raw -o - "$squirrel_app/Contents/Info.plist" 2>/dev/null || echo "未知")
   echo "  [信息] 已安装鼠须管 ${installed}：不会卸载或重装"
 else
   installed=""
