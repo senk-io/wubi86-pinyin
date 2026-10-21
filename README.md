@@ -22,6 +22,8 @@
 
 macOS 上如果装完在菜单栏看不到鼠须管，注销后重新登录一次即可。
 
+卸载：`sh scripts/uninstall-macos.sh`。它会删除鼠须管应用、安装记录和偏好设置；`~/Library/Rime`（含词频记录）会先询问再删。
+
 如果你原来已经有 `default.custom.yaml`，脚本不会覆盖它，会提示你手动把 `wubi86_pinyin` 加进 `schema_list`。
 
 ## 目录结构
