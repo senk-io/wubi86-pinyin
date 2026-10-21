@@ -50,6 +50,8 @@ func (o *Ollama) post(ctx context.Context, path string, req, resp any) error {
 	return json.NewDecoder(res.Body).Decode(resp)
 }
 
+const numCtx = 4096
+
 // Generate 生成一段文本。keepAlive 是用完后模型在内存里保留多久（如 "30m"）：
 // 续写要随打随用，保留得久以免冷启动；后台抽术语用短的，抽完很快释放内存。
 // format 非空时按该 JSON Schema 约束输出（Ollama 的结构化输出）。
@@ -63,6 +65,9 @@ func (o *Ollama) Generate(ctx context.Context, system, prompt string, maxTokens 
 		"options": map[string]any{
 			"num_predict": maxTokens,
 			"temperature": 0.3,
+			// 提示词最多一千多 token；默认按模型的 32k 上下文分配缓存会多占 1GB 以上内存。
+			// 所有调用用同一个值，避免上下文长度不同导致模型重新加载。
+			"num_ctx": numCtx,
 		},
 	}
 	if format != nil {
