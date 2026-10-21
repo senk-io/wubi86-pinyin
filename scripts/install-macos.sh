@@ -28,14 +28,14 @@ for arg in "$@"; do
     --apply) apply=1 ;;
     wubi86-pinyin|pinyin) variant=$arg ;;
     -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-    *) echo "未知参数：$arg（用法：sh scripts/install-macos.sh [--apply] [wubi86-pinyin|pinyin]）" >&2; exit 1 ;;
+    *) echo "未知参数：${arg}（用法：sh scripts/install-macos.sh [--apply] [wubi86-pinyin|pinyin]）" >&2; exit 1 ;;
   esac
 done
 [ -n "$variant" ] || variant=$(cat "$root/VARIANT" 2>/dev/null || echo wubi86-pinyin)
 case "$variant" in
   wubi86-pinyin) schema=wubi86_pinyin schema_name="五笔86·拼音" test_hint="nihao 和 wqvb 都出「你好」" ;;
   pinyin) schema=senk_pinyin schema_name="拼音" test_hint="nihao 出「你好」" ;;
-  *) echo "未知的安装包：$variant（可选 wubi86-pinyin、pinyin）" >&2; exit 1 ;;
+  *) echo "未知的安装包：${variant}（可选 wubi86-pinyin、pinyin）" >&2; exit 1 ;;
 esac
 
 rime_dir="$HOME/Library/Rime"
@@ -101,7 +101,7 @@ rollback() {
         "$squirrel" --reload >>"$log_file" 2>&1 && log "回滚：已通知鼠须管按恢复后的文件重新部署"
       fi
     else
-      log "回滚：无法移动 $rime_dir。备份在 $backup_dir/Rime，请手动恢复"
+      log "回滚：无法移动 ${rime_dir}。备份在 $backup_dir/Rime，请手动恢复"
     fi
   fi
   log "回滚：结束"
@@ -123,19 +123,19 @@ check() {  # check <是否通过 0/1> <说明>
 # 发布包里由 git archive 替换为提交号
 # shellcheck disable=SC2016
 script_version='$Format:%h$'
-echo "wubi86-pinyin 安装脚本（版本 $script_version），安装包：$variant（方案「$schema_name」）"
+echo "wubi86-pinyin 安装脚本（版本 ${script_version}），安装包：${variant}（方案「${schema_name}」）"
 if [ "$apply" = 1 ]; then echo "模式：执行"; else echo "模式：预览（不做任何改动；确认无误后加 --apply 执行）"; fi
 echo
 echo "前置检查："
 
 os_version=$(sw_vers -productVersion 2>/dev/null || echo 0)
-[ "${os_version%%.*}" -ge "$min_macos" ] 2>/dev/null; check $? "macOS $os_version（需要 $min_macos 或更高）"
+[ "${os_version%%.*}" -ge "$min_macos" ] 2>/dev/null; check $? "macOS ${os_version}（需要 $min_macos 或更高）"
 
 free_mb=$(df -Pk "$HOME" | awk 'NR == 2 { print int($4 / 1024) }')
 [ "${free_mb:-0}" -ge "$min_free_mb" ]; check $? "可用磁盘空间 ${free_mb}MB（需要 ${min_free_mb}MB）"
 
 pressure=$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null || echo "?")
-[ "$pressure" = 1 ]; check $? "内存压力等级 $pressure（必须为 1，即正常；黄或红时不安装）"
+[ "$pressure" = 1 ]; check $? "内存压力等级 ${pressure}（必须为 1，即正常；黄或红时不安装）"
 
 busy=0
 [ ! -d "$lock_dir" ] || busy=1
@@ -146,7 +146,7 @@ if pgrep -x installer >/dev/null 2>&1; then busy=1; fi
 
 if [ -x "$squirrel" ]; then
   installed=$(defaults read "$squirrel_app/Contents/Info" CFBundleShortVersionString 2>/dev/null || echo "未知")
-  echo "  [信息] 已安装鼠须管 $installed：不会卸载或重装"
+  echo "  [信息] 已安装鼠须管 ${installed}：不会卸载或重装"
 else
   installed=""
   echo "  [信息] 未安装鼠须管：将安装固定版本 $squirrel_version"
@@ -170,10 +170,10 @@ n=1
 echo "  $n. 备份 $rime_dir 和 $prefs 到 $backup_dir"
 n=$((n + 1))
 if [ -z "$installed" ]; then
-  echo "  $n. 下载鼠须管 $squirrel_version，校验 sha256 ($squirrel_sha256) 和签名（TeamIdentifier=$squirrel_team_id），用 sudo installer 安装（需要输入登录密码）"
+  echo "  $n. 下载鼠须管 ${squirrel_version}，校验 sha256 ($squirrel_sha256) 和签名（TeamIdentifier=${squirrel_team_id}），用 sudo installer 安装（需要输入登录密码）"
   n=$((n + 1))
 fi
-echo "  $n. 把方案「$schema_name」的文件复制到 $rime_dir（default.custom.yaml 的处理规则见脚本注释）"
+echo "  $n. 把方案「${schema_name}」的文件复制到 ${rime_dir}（default.custom.yaml 的处理规则见脚本注释）"
 n=$((n + 1))
 echo "  $n. 如果鼠须管不在系统输入法列表里，用它自带的 --register-input-source / --enable-input-source 加入"
 n=$((n + 1))
@@ -182,7 +182,7 @@ echo "     鼠须管进程没有运行时不部署，也不手动启动它，文
 n=$((n + 1))
 echo "  $n. 验证：鼠须管进程在运行、在系统输入法列表里、部署出的方案文件存在"
 echo
-echo "任何一步失败都会停止并回滚：恢复 $rime_dir、撤销本次加入的输入法。"
+echo "任何一步失败都会停止并回滚：恢复 ${rime_dir}、撤销本次加入的输入法。"
 echo "日志写到 $log_dir/install-$stamp.log"
 
 if [ "$apply" = 0 ]; then
@@ -200,14 +200,14 @@ if [ "$answer" != yes ]; then
 fi
 
 # ---------- 执行 ----------
-mkdir -p "$state_dir" "$log_dir" || { echo "无法创建 $state_dir 或 $log_dir，已停止，没有做任何改动。" >&2; exit 1; }
+mkdir -p "$state_dir" "$log_dir" || { echo "无法创建 $state_dir 或 ${log_dir}，已停止，没有做任何改动。" >&2; exit 1; }
 log_file="$log_dir/install-$stamp.log"
 if ! mkdir "$lock_dir" 2>/dev/null; then
   echo "另一个安装正在进行（$lock_dir 已存在），已停止，没有做任何改动。" >&2
   exit 1
 fi
 lock_held=1
-log "开始安装：安装包 $variant，macOS $os_version，内存压力 $pressure，已装鼠须管 ${installed:-无}"
+log "开始安装：安装包 ${variant}，macOS ${os_version}，内存压力 ${pressure}，已装鼠须管 ${installed:-无}"
 
 # 1. 备份
 mkdir -p "$backup_dir" || fail "无法创建备份目录 $backup_dir"
@@ -228,7 +228,7 @@ if [ -z "$installed" ]; then
   log "下载 $url"
   curl -fL --progress-bar -o "$pkg" "$url" || fail "下载失败"
   actual=$(shasum -a 256 "$pkg" | awk '{ print $1 }')
-  [ "$actual" = "$squirrel_sha256" ] || fail "sha256 不符：期望 $squirrel_sha256，实际 $actual"
+  [ "$actual" = "$squirrel_sha256" ] || fail "sha256 不符：期望 ${squirrel_sha256}，实际 $actual"
   log "sha256 校验通过"
   # 安装前校验包内应用的签名。不能装完再验：安装包的 postinstall 会在
   # Squirrel.app 内部生成预编译数据，之后整包签名校验必然失败。
@@ -237,9 +237,11 @@ if [ -z "$installed" ]; then
   [ -n "$app" ] || fail "安装包里没有找到 Squirrel.app"
   codesign --verify --deep --strict "$app" >>"$log_file" 2>&1 || fail "签名校验失败（见日志）"
   team=$(codesign -dvv "$app" 2>&1 | sed -n 's/^TeamIdentifier=//p')
-  [ "$team" = "$squirrel_team_id" ] || fail "签名者不符：期望 $squirrel_team_id，实际 ${team:-无}"
-  log "签名校验通过（TeamIdentifier=$team）"
+  [ "$team" = "$squirrel_team_id" ] || fail "签名者不符：期望 ${squirrel_team_id}，实际 ${team:-无}"
+  log "签名校验通过（TeamIdentifier=${team}）"
   echo "正在安装鼠须管，需要输入本机登录密码："
+  # 日志由当前用户写入，有意不让 sudo 管重定向
+  # shellcheck disable=SC2024
   if ! sudo installer -pkg "$pkg" -target / >>"$log_file" 2>&1; then
     log "失败：installer 返回错误（见日志）。如果鼠须管只装了一半，可以手动移除："
     log "  sudo rm -rf \"$squirrel_app\" && sudo pkgutil --forget $bundle_id"
@@ -263,7 +265,7 @@ fi
 "$root/scripts/assemble.sh" "$rime_dir" "$variant" >>"$log_file" 2>&1 || fail "复制方案文件失败（见日志）"
 if [ "$keep" = 1 ]; then
   cp "$backup_dir/Rime/default.custom.yaml" "$custom" || fail "恢复你自己的 default.custom.yaml 失败"
-  log "保留了你自己的 default.custom.yaml（其中已启用 $schema）"
+  log "保留了你自己的 default.custom.yaml（其中已启用 ${schema}）"
 elif [ -f "$backup_dir/Rime/default.custom.yaml" ]; then
   log "原有的 default.custom.yaml 已替换，原文件在 $backup_dir/Rime/default.custom.yaml"
 fi
@@ -289,7 +291,7 @@ if ! squirrel_running; then
   log "  文件已就位，鼠须管下次启动时会自动部署。刚安装完时系统通常要注销后重新登录才会启动它，是否注销由你决定。"
 else
   pressure=$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null || echo "?")
-  [ "$pressure" = 1 ] || fail "内存压力等级变为 $pressure，不部署"
+  [ "$pressure" = 1 ] || fail "内存压力等级变为 ${pressure}，不部署"
   before=0
   [ ! -f "$rime_log" ] || before=$(wc -l <"$rime_log")
   "$squirrel" --reload >>"$log_file" 2>&1 || fail "--reload 失败（见日志）"
@@ -307,12 +309,12 @@ else
   if [ -z "$result" ]; then
     # 部署可能还在进行，这时恢复文件会和它冲突，所以只停止并报告，不自动回滚
     log "停止：${deploy_timeout} 秒内没有看到部署结果。没有自动回滚（部署可能仍在进行）。"
-    log "  请看鼠须管日志 $rime_log；如需回滚：mv \"$rime_dir\" \"$rime_dir.failed-$stamp\" && ditto \"$backup_dir/Rime\" \"$rime_dir\"，然后在鼠须管菜单里选「重新部署」"
+    log "  请看鼠须管日志 ${rime_log}；如需回滚：mv \"$rime_dir\" \"$rime_dir.failed-$stamp\" && ditto \"$backup_dir/Rime\" \"$rime_dir\"，然后在鼠须管菜单里选「重新部署」"
     exit 1
   fi
   case "$result" in
     *" 0 failure"*) ;;
-    *) fail "部署有失败：$result（见 $rime_log）" ;;
+    *) fail "部署有失败：${result}（见 ${rime_log}）" ;;
   esac
   deployed=1
   log "第 5 步完成：部署结果 $result"
@@ -325,6 +327,6 @@ if [ "$deployed" = 1 ]; then
 fi
 source_enabled || fail "鼠须管不在系统输入法列表里"
 log "第 6 步完成：验证通过"
-log "安装完成。备份在 $backup_dir，日志在 $log_file"
+log "安装完成。备份在 ${backup_dir}，日志在 $log_file"
 echo
-echo "请在菜单栏选择鼠须管，确认打 $test_hint。"
+echo "请在菜单栏选择鼠须管，确认打 ${test_hint}。"
