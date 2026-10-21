@@ -52,7 +52,7 @@ engine:
     - punct_translator
     - table_translator                  # 五笔
     - script_translator@pinyin          # 混输中的拼音
-    - script_translator@pinyin_lookup   # z 前缀学码模式
+    - script_translator@pinyin_lookup   # 反引号前缀学码模式
   filters:
     - lua_filter@*wubi_mixed_filter     # 混输去噪 + 五笔编码提示
     - uniquifier
