@@ -9,13 +9,13 @@
 
 schema:
   schema_id: wubi86_pinyin
-  name: SENK五笔混拼输入法86版
+  name: SENK五笔  # 全名 SENK五笔混拼输入法86版；菜单和顶部空间有限，显示短名
   version: "0.5.0"
   author:
     - 五笔字形发明人 王永民
     - wubi86-pinyin contributors
   description: |
-    五笔字形 86 版与拼音混输。码表来自 rime-wubi86-jidian，拼音词库来自 rime-pinyin-simp，
+    SENK五笔混拼输入法86版：五笔字形 86 版与拼音混输。码表来自 rime-wubi86-jidian，拼音词库来自 rime-pinyin-simp，
     两者均为 Apache-2.0，详见 data/NOTICE.md。
   dependencies:
     - pinyin_simp

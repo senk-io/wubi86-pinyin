@@ -33,8 +33,8 @@ for arg in "$@"; do
 done
 [ -n "$variant" ] || variant=$(cat "$root/VARIANT" 2>/dev/null || echo wubi86-pinyin)
 case "$variant" in
-  wubi86-pinyin) schema=wubi86_pinyin schema_name="SENK五笔混拼输入法86版" test_hint="nihao 和 wqvb 都出「你好」" ;;
-  pinyin) schema=senk_pinyin schema_name="SENK拼音输入法" test_hint="nihao 出「你好」" ;;
+  wubi86-pinyin) schema=wubi86_pinyin schema_name="SENK五笔" test_hint="nihao 和 wqvb 都出「你好」" ;;
+  pinyin) schema=senk_pinyin schema_name="SENK拼音" test_hint="nihao 出「你好」" ;;
   *) echo "未知的安装包：${variant}（可选 wubi86-pinyin、pinyin）" >&2; exit 1 ;;
 esac
 
