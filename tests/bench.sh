@@ -27,4 +27,6 @@ total=$(wc -l < "$work/expected.txt" | tr -d ' ')
 pass=$(paste "$work/expected.txt" "$work/actual.txt" | awk -F '\t' '$1 == $2' | wc -l | tr -d ' ')
 paste "$work/expected.txt" "$work/actual.txt" | awk -F '\t' '$1 != $2 {print "  期望 " $1 "，得到 " $2}'
 echo "正确 ${pass}/${total}"
+# 在 GitHub Actions 里同时输出为注释，方便不下载日志就看到结果
+[ -z "${GITHUB_ACTIONS:-}" ] || echo "::notice title=pinyin-bench ${1:+grammar}::正确 ${pass}/${total}"
 [ -z "${2:-}" ] || [ "$pass" -ge "$2" ]
