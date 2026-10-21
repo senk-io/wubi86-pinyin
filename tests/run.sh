@@ -12,6 +12,10 @@ trap 'rm -rf "$work"' EXIT
 
 gcc -O2 -o "$work/rime_probe" "$here/rime_probe.c" -lrime
 "$root/scripts/assemble.sh" "$work/user"
+# 模拟已安装 wubi86d：联想相关用例通过 "$ " 行直接读写这些文件
+mkdir -p "$work/user/wubi86d"
+printf '笔记\n工作\n' > "$work/user/wubi86d/folders.txt"
+export RIME_USER="$work/user"
 grep -v '^#' "$here/cases.txt" \
   | "$work/rime_probe" "$shared" "$work/user" wubi86_pinyin 6 2>/dev/null > "$work/actual.txt"
 

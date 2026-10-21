@@ -13,12 +13,17 @@
 --    - 五笔候选如果是"忘码"记录里的字词，且当前输入还不是它的完整编码，
 --      注释里标出完整编码和忘记次数，帮助记住。
 -- 4. 忘码记录：上屏时交给 wubi_memory 记录，见该文件。
+-- 5. 本地模型联想（开关 predict）：上屏时把上文交给 wubi_predict；打下一个词时，
+--    匹配当前输入码的联想词插在第 2 位起，见 wubi_predict.lua。
 --
 -- 配置（schema 中与 filter 同名的节点）：
 --   dictionary: 用于反查的五笔码表名
+--   pinyin_dictionary: 用于给联想词注音的拼音词库
 --   lookup_prefix: 学码模式前缀，默认 "`"
+--   predict_max: 每次最多插入几个联想词，默认 2
 
 local memory = require("wubi_memory")
+local predict = require("wubi_predict")
 
 local M = {}
 
@@ -35,10 +40,15 @@ local function on_commit(ctx)
     local status = seg.status
     if cand and (status == "kSelected" or status == "kConfirmed") then
       local text = cand.text
-      if text:find("[\128-\255]") then  -- 只记录中文等非 ASCII 上屏
+      -- 只记录中文等非 ASCII 上屏；联想词不算忘码
+      if text:find("[\128-\255]") and cand:get_genuine().type ~= "predict" then
         memory.record(text, is_from_pinyin(cand))
       end
     end
+  end
+  if ctx:get_option("predict") then
+    local text = ctx:get_commit_text()
+    if text ~= "" then predict.on_commit(text) end
   end
 end
 
@@ -46,7 +56,9 @@ function M.init(env)
   local config = env.engine.schema.config
   local ns = env.name_space
   env.reverse = ReverseLookup(config:get_string(ns .. "/dictionary") or "wubi86_jidian")
+  env.pinyin = ReverseLookup(config:get_string(ns .. "/pinyin_dictionary") or "pinyin_simp")
   env.prefix = config:get_string(ns .. "/lookup_prefix") or "`"
+  env.predict_max = config:get_int(ns .. "/predict_max") or 2
   env.commit_conn = env.engine.context.commit_notifier:connect(on_commit)
 end
 
@@ -100,11 +112,31 @@ local function is_emoji(text)
   return true
 end
 
+-- 匹配当前输入码的联想词，作为新候选返回
+local function predicted(env, ctx)
+  if not ctx:get_option("predict") or not predict.available() then return {} end
+  local seg = ctx.composition:back()
+  if not seg then return {} end
+  local code = ctx.input:sub(seg.start + 1, seg._end)
+  if code == "" or code:sub(1, #env.prefix) == env.prefix then return {} end
+  local profile, phrases = predict.suggestions()
+  local comment = profile ~= "" and ("〔联想·" .. profile .. "〕") or "〔联想〕"
+  local out = {}
+  for _, phrase in ipairs(phrases) do
+    if #out >= env.predict_max then break end
+    if predict.matches(phrase, code, env.reverse, env.pinyin) then
+      out[#out + 1] = Candidate("predict", seg.start, seg._end, phrase, comment)
+    end
+  end
+  return out
+end
+
 function M.func(translation, env)
   local ctx = env.engine.context
   local hint_on = ctx:get_option("code_hint")
   local emoji_on = ctx:get_option("emoji")
   local seen_wubi, seen_full_phrase = false, false
+  local pending = predicted(env, ctx)  -- 在第一个候选之后插入
   for cand in translation:iter() do
     local input = ctx.input:sub(cand.start + 1, cand._end)
     local lookup_mode = input:sub(1, #env.prefix) == env.prefix
@@ -141,7 +173,14 @@ function M.func(translation, env)
         end
       end
       yield(cand)
+      if pending then
+        for _, p in ipairs(pending) do yield(p) end
+        pending = nil
+      end
     end
+  end
+  if pending then
+    for _, p in ipairs(pending) do yield(p) end
   end
 end
 

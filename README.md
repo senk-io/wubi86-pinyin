@@ -4,7 +4,7 @@
 
 目标是解决一个具体的问题：**五笔打到一半忘了码，想要的字又不在首位，只能按数字去选。**
 
-## 现在能做什么（v0.2）
+## 现在能做什么（v0.3）
 
 - **五笔 86 为主，拼音随时混输**：不用切换模式，直接打拼音。五笔候选总是排在前面。
 - **拼音候选显示五笔编码**：例如打 `nihao` 会看到 `你好〔wqvb〕`、`你〔wq〕`，打一次就顺便学会。
@@ -15,6 +15,20 @@
   记录只保存在本机 Rime 用户目录的 `wubi86_pinyin_weak.txt`，只记上屏的字词，不记按键过程，也不联网。
 - **emoji 开关**：码表自带的 emoji 默认不出现，不占候选位置；需要时打开开关 `emoji`。
 - 开关 `code_hint` 可以关闭编码提示。
+
+### 本地模型联想（可选）
+
+装上常驻进程 `wubi86d` 后，每次上屏，本机的 7B 模型会结合你的输入历史和资料文件夹（RAG）推测下一个词。打下一个词时，匹配的联想词出现在第 2 位，注释为〔联想〕或〔联想·文件夹名〕。首选不变，不会打乱五笔简码的空格习惯。
+
+```sh
+sh scripts/install-helper-macos.sh   # 安装 Ollama、qwen2.5:7b、bge-m3 和 wubi86d，并设为登录后自动运行
+```
+
+- **资料文件夹**：在 `~/Library/Rime/wubi86d/config.json` 的 `folders` 里添加，例如 `{"name": "笔记", "path": "~/Documents/笔记"}`。可以添加多个。
+- **切换资料文件夹**：打字时按 `Control+Shift+R` 轮换，也可以运行 `wubi86d use 笔记`；`wubi86d folders` 查看全部。
+- **输入历史**：只存在本机；在 `config.json` 里把 `history` 设为 `false` 可以关闭，运行 `wubi86d forget-history` 可以清空。
+- 开关 `predict` 可以临时关闭联想。
+- 不开任何端口，模型地址默认只允许本机。细节见 [docs/architecture.md](docs/architecture.md)。
 
 ## 安装
 
@@ -36,6 +50,7 @@ macOS 上如果装完在菜单栏看不到鼠须管，注销后重新登录一�
 | `schema/` | 方案配置与 Lua 过滤器 | MIT |
 | `data/` | 第三方码表与拼音词库（未修改） | Apache-2.0，见 [data/NOTICE.md](data/NOTICE.md) |
 | `scripts/` | 汇总与安装脚本 | MIT |
+| `helper/` | 常驻进程 wubi86d（Go） | MIT |
 | `tests/` | 用 librime 驱动方案的端到端测试 | MIT |
 | `docs/` | 设计文档 | MIT |
 
@@ -49,7 +64,9 @@ tests/run.sh            # 比对 tests/expected.txt
 tests/run.sh --update   # 修改方案后重新生成期望结果
 ```
 
-`tests/cases.txt` 每行一个输入码；`!k 码` 表示输入后选第 k 个候选上屏，用来测试用户词频。
+`tests/cases.txt` 每行一个输入码；`!k 码` 表示输入后选第 k 个候选上屏；`$ 命令` 交给 shell 执行（用来模拟 wubi86d）；`@ 按键` 只发送按键。
+
+常驻进程：`cd helper && go test ./...`。
 
 ## 路线图
 
@@ -57,7 +74,7 @@ tests/run.sh --update   # 修改方案后重新生成期望结果
 
 1. 基础方案（本版本）
 2. 记忆与纠错：记录"忘码"的字并加强提示（已完成）；常见拆字错误容错（进行中）
-3. 本地模型（可选）：常驻进程调用 Ollama / llama.cpp，做候选重排与联想
+3. 本地模型（可选）：常驻进程 wubi86d 调用 Ollama，结合输入历史与资料文件夹做 RAG 联想（已完成 macOS）
 4. 打包与发布
 5. 语音输入（按住说话）
 6. 扩展：提示词片段与本地脚本入口
