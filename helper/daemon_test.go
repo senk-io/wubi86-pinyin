@@ -19,6 +19,7 @@ type fakeOllama struct {
 	mu         sync.Mutex
 	lastPrompt string
 	reply      string
+	calls      int
 }
 
 func (f *fakeOllama) handler(t *testing.T) http.Handler {
@@ -43,6 +44,7 @@ func (f *fakeOllama) handler(t *testing.T) http.Handler {
 		json.NewDecoder(r.Body).Decode(&req)
 		f.mu.Lock()
 		f.lastPrompt = req.Prompt
+		f.calls++
 		reply := f.reply
 		f.mu.Unlock()
 		json.NewEncoder(w).Encode(map[string]any{"response": reply})
@@ -224,6 +226,9 @@ func TestTermIndexIncremental(t *testing.T) {
 	// 依赖目录不抽取
 	os.MkdirAll(filepath.Join(notes, "node_modules", "pkg"), 0o700)
 	os.WriteFile(filepath.Join(notes, "node_modules", "pkg", "README.md"), []byte("星辰数据平台"), 0o600)
+	// 内容相同的副本只调用一次模型
+	os.MkdirAll(filepath.Join(notes, "copy"), 0o700)
+	os.WriteFile(filepath.Join(notes, "copy", "b.txt"), []byte("灰度发布流程"), 0o600)
 	d, fake := newTestDaemon(t, []Folder{{Name: "星辰", Path: notes}})
 	fake.reply = `["星辰数据平台", "灰度发布", "不存在的词"]`
 	ctx := context.Background()
@@ -234,8 +239,11 @@ func TestTermIndexIncremental(t *testing.T) {
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	if !strings.HasPrefix(lines[0], "v") || strings.Join(lines[1:], "|") != "星辰数据平台\t2|灰度发布\t1" {
+	if !strings.HasPrefix(lines[0], "v") || strings.Join(lines[1:], "|") != "星辰数据平台\t2|灰度发布\t2" {
 		t.Fatalf("term list = %q", data)
+	}
+	if fake.calls != 2 {
+		t.Fatalf("model called %d times, want 2 (duplicate content reused)", fake.calls)
 	}
 
 	// 删除文件后术语随之移除；未改动的文件不重抽
@@ -243,12 +251,12 @@ func TestTermIndexIncremental(t *testing.T) {
 	fake.reply = `[]`
 	d.reindex(ctx)
 	data, _ = os.ReadFile(d.termListPath("星辰"))
-	if got := strings.Join(strings.Split(strings.TrimSpace(string(data)), "\n")[1:], "|"); got != "灰度发布\t1" {
+	if got := strings.Join(strings.Split(strings.TrimSpace(string(data)), "\n")[1:], "|"); got != "灰度发布\t2" {
 		t.Fatalf("after delete term list = %q", got)
 	}
 
 	reopened, _ := openTermIndex(d.terms["星辰"].path)
-	if len(reopened.files) != 1 {
+	if len(reopened.files) != 2 {
 		t.Fatalf("term index not persisted: %d files", len(reopened.files))
 	}
 }

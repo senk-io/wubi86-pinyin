@@ -270,10 +270,16 @@ func (d *Daemon) termListPath(name string) string {
 
 func (d *Daemon) reindexTerms(ctx context.Context, f Folder) {
 	idx := d.terms[f.Name]
-	n, err := idx.update(ctx, d.llm, f.Path, func(file string) {
-		log.Printf("「%s」术语抽取：%s", f.Name, file)
-		// 边抽边更新术语表，大文件夹不用等全部完成就能用上
-		writeTermList(d.termListPath(f.Name), idx.Totals())
+	n, err := idx.update(ctx, d.llm, f.Path, func(file string, done, total int, reused bool) {
+		note := ""
+		if reused {
+			note = "（与已抽取的文件内容相同，直接复用）"
+		}
+		log.Printf("「%s」术语抽取 %d/%d：%s%s", f.Name, done, total, file, note)
+		// 边抽边更新术语表，大文件夹不用等全部完成就能用上；文件很多时每 20 个写一次
+		if done == total || done%20 == 0 || total < 20 {
+			writeTermList(d.termListPath(f.Name), idx.Totals())
+		}
 	})
 	if err != nil {
 		log.Printf("「%s」术语抽取失败：%v", f.Name, err)

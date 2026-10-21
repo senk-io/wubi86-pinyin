@@ -3,6 +3,8 @@ package main
 import (
 	"bufio"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,6 +36,7 @@ const termSystemPrompt = "你是术语抽取工具。从用户给出的文本中
 type fileTerms struct {
 	File  string         `json:"file"`
 	MTime int64          `json:"mtime"`
+	Hash  string         `json:"hash,omitempty"` // 内容的 SHA-256，内容相同的文件只抽取一次
 	Terms map[string]int `json:"terms"`
 }
 
@@ -154,9 +157,16 @@ func (idx *TermIndex) Totals() map[string]int {
 	return totals
 }
 
-// update 增量更新：新增或改动的文件重新抽取，删除的文件移除。progress 每处理完一个文件调用一次。
-func (idx *TermIndex) update(ctx context.Context, o *Ollama, root string, progress func(file string)) (changed int, err error) {
+// update 增量更新：新增或改动的文件重新抽取，删除的文件移除。内容与已抽取文件相同的
+// （项目里常有整份复制的目录）直接复用结果，不再调用模型。
+// progress 每处理完一个文件调用一次，done/total 为本轮需要处理的文件数。
+func (idx *TermIndex) update(ctx context.Context, o *Ollama, root string, progress func(file string, done, total int, reused bool)) (changed int, err error) {
+	type pending struct {
+		rel, path string
+		mtime     int64
+	}
 	present := map[string]bool{}
+	var todo []pending
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -177,27 +187,44 @@ func (idx *TermIndex) update(ctx context.Context, o *Ollama, root string, progre
 		rel, _ := filepath.Rel(root, path)
 		present[rel] = true
 		mtime := info.ModTime().Unix()
-		if prev, ok := idx.files[rel]; ok && prev.MTime == mtime {
-			return nil
+		if prev, ok := idx.files[rel]; !ok || prev.MTime != mtime {
+			todo = append(todo, pending{rel, path, mtime})
 		}
-		data, err := os.ReadFile(path)
-		if err != nil || !utf8.Valid(data) {
-			return nil
-		}
-		terms, err := extractTerms(ctx, o, string(data))
-		if err != nil {
-			return err
-		}
-		idx.files[rel] = fileTerms{File: rel, MTime: mtime, Terms: terms}
-		changed++
-		if progress != nil {
-			progress(rel)
-		}
-		// 每个文件处理完就落盘，大文件夹中途中断也不会丢掉已完成的部分
-		return idx.save()
+		return nil
 	})
 	if err != nil {
-		return changed, err
+		return 0, err
+	}
+
+	byHash := map[string]map[string]int{}
+	for _, ft := range idx.files {
+		if ft.Hash != "" {
+			byHash[ft.Hash] = ft.Terms
+		}
+	}
+	for i, p := range todo {
+		data, err := os.ReadFile(p.path)
+		if err != nil || !utf8.Valid(data) {
+			continue
+		}
+		sum := sha256.Sum256(data)
+		hash := hex.EncodeToString(sum[:])
+		terms, reused := byHash[hash]
+		if !reused {
+			if terms, err = extractTerms(ctx, o, string(data)); err != nil {
+				return changed, err
+			}
+			byHash[hash] = terms
+		}
+		idx.files[p.rel] = fileTerms{File: p.rel, MTime: p.mtime, Hash: hash, Terms: terms}
+		changed++
+		// 每个文件处理完就落盘，大文件夹中途中断也不会丢掉已完成的部分
+		if err := idx.save(); err != nil {
+			return changed, err
+		}
+		if progress != nil {
+			progress(p.rel, i+1, len(todo), reused)
+		}
 	}
 	for f := range idx.files {
 		if !present[f] {
