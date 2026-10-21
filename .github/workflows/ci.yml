@@ -89,3 +89,5 @@ jobs:
           codesign --verify --deep --strict "$app"
           actual=$(codesign -dvv "$app" 2>&1 | sed -n 's/^TeamIdentifier=//p')
           test "$actual" = "$team"
+          # 安装脚本从这一项读已安装鼠须管的版本号
+          [ "$(plutil -extract CFBundleVersion raw -o - "$app/Contents/Info.plist")" = "$version" ]
