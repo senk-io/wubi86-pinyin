@@ -29,7 +29,7 @@ rime_dir="$HOME/Library/Rime"
 if [ "$keep_user_data" = 1 ]; then
   echo "已保留 $rime_dir"
 elif [ -d "$rime_dir" ]; then
-  echo "发现 Rime 用户目录 $rime_dir，内容如下："
+  echo "发现 Rime 用户目录 ${rime_dir}，内容如下："
   ls "$rime_dir"
   printf "是否一并删除？其中包括你的词频记录 [y/N] "
   read -r answer

@@ -29,7 +29,7 @@ install_squirrel() {
   fi
   case "$version" in
     [0-9]*.[0-9]*) ;;
-    *) echo "无法确定鼠须管版本（得到：$version），可用 SQUIRREL_VERSION=1.1.2 指定。" >&2; exit 1 ;;
+    *) echo "无法确定鼠须管版本（得到：${version}），可用 SQUIRREL_VERSION=1.1.2 指定。" >&2; exit 1 ;;
   esac
 
   tmp=$(mktemp -d)
@@ -57,7 +57,7 @@ install_squirrel() {
     echo "鼠须管签名者不符：期望 ${SQUIRREL_TEAM_ID:-28HU5A7B46}，实际 ${team:-无}，已停止。" >&2
     exit 1
   fi
-  echo "签名校验通过（TeamIdentifier=$team）。"
+  echo "签名校验通过（TeamIdentifier=${team}）。"
 
   # 新安装包下载并校验通过后才卸载旧版，避免中途失败导致没有输入法可用
   if [ -e "$squirrel_app" ]; then
