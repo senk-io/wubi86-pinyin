@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 # 拼音长句基准：逐句输入 pinyin_bench.txt，统计首选完全正确的句数，列出错句。
-# 用法：tests/bench.sh [语言模型.gram] [最少正确句数]
-#   给出 .gram 时按 schema/optional/grammar.custom.yaml 启用语言模型（需要 librime-octagram）。
+# 用法：tests/bench.sh [语言模型.gram] [最少正确句数] [安装包]
+#   给出 .gram 时按 schema/optional/<方案>.custom.yaml 启用语言模型（需要 librime-octagram）。
+#   安装包为 wubi86-pinyin（默认）或 pinyin。
 #   给出最少正确句数时，低于它就以失败退出（供 CI 防止退化）。
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
@@ -11,15 +12,20 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
 gcc -O2 -o "$work/rime_probe" "$here/rime_probe.c" -lrime
-"$root/scripts/assemble.sh" "$work/user" >/dev/null
+variant=${3:-wubi86-pinyin}
+case "$variant" in
+  pinyin) schema=senk_pinyin ;;
+  *) schema=wubi86_pinyin ;;
+esac
+"$root/scripts/assemble.sh" "$work/user" "$variant" >/dev/null
 if [ -n "${1:-}" ]; then
   cp "$1" "$work/user/"
-  cp "$root/schema/optional/grammar.custom.yaml" "$work/user/wubi86_pinyin.custom.yaml"
+  cp "$root/schema/optional/$schema.custom.yaml" "$work/user/"
 fi
 export RIME_USER="$work/user"
 
 grep -v '^#' "$here/pinyin_bench.txt" | cut -f1 | sed 's/^/!1 /' \
-  | "$work/rime_probe" "$shared" "$work/user" wubi86_pinyin 1 2>/dev/null \
+  | "$work/rime_probe" "$shared" "$work/user" "$schema" 1 2>/dev/null \
   | sed -n 's/^commit [a-z]* -> //p' > "$work/actual.txt"
 grep -v '^#' "$here/pinyin_bench.txt" | cut -f2 > "$work/expected.txt"
 
@@ -28,5 +34,5 @@ pass=$(paste "$work/expected.txt" "$work/actual.txt" | awk -F '\t' '$1 == $2' | 
 paste "$work/expected.txt" "$work/actual.txt" | awk -F '\t' '$1 != $2 {print "  期望 " $1 "，得到 " $2}'
 echo "正确 ${pass}/${total}"
 # 在 GitHub Actions 里同时输出为注释，方便不下载日志就看到结果
-[ -z "${GITHUB_ACTIONS:-}" ] || echo "::notice title=pinyin-bench ${1:+grammar}::正确 ${pass}/${total}"
+[ -z "${GITHUB_ACTIONS:-}" ] || echo "::notice title=pinyin-bench ${variant}${1:+ grammar}::正确 ${pass}/${total}"
 [ -z "${2:-}" ] || [ "$pass" -ge "$2" ]

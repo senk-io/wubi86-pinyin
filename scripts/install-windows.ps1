@@ -1,5 +1,8 @@
 ﻿# 安装到小狼毫（Weasel）用户目录并重新部署；没装小狼毫时先自动安装。
-# 用法：powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1
+# 用法：powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1 [wubi86-pinyin|pinyin]
+#   安装包：wubi86-pinyin 为五笔86·拼音混输，pinyin 为纯拼音；不给出时读取根目录的 VARIANT 文件，
+#   没有则为 wubi86-pinyin。文件清单与 scripts/assemble.sh 一致。
+param([string]$Variant = "")
 $ErrorActionPreference = "Stop"
 
 function Find-WeaselDeployer {
@@ -32,17 +35,41 @@ $root = Split-Path -Parent $PSScriptRoot
 $rimeDir = Join-Path $env:APPDATA "Rime"
 New-Item -ItemType Directory -Force -Path (Join-Path $rimeDir "lua") | Out-Null
 
-# 不覆盖用户已有的 default.custom.yaml，避免丢掉其它方案
-$customPath = Join-Path $rimeDir "default.custom.yaml"
-$hadCustom = Test-Path $customPath
+if (-not $Variant) {
+  $variantFile = Join-Path $root "VARIANT"
+  $Variant = if (Test-Path $variantFile) { (Get-Content $variantFile -Raw).Trim() } else { "wubi86-pinyin" }
+}
+switch ($Variant) {
+  "wubi86-pinyin" { $schema = "wubi86_pinyin"; $other = "senk_pinyin" }
+  "pinyin" { $schema = "senk_pinyin"; $other = "wubi86_pinyin" }
+  default { throw "未知的安装包：$Variant（可选 wubi86-pinyin、pinyin）" }
+}
 
-Copy-Item (Join-Path $root "data\*.yaml") $rimeDir -Force
-Copy-Item (Join-Path $root "schema\lua\*.lua") (Join-Path $rimeDir "lua") -Force
-Get-ChildItem (Join-Path $root "schema\*.yaml") | Where-Object {
-  -not ($hadCustom -and $_.Name -eq "default.custom.yaml")
-} | Copy-Item -Destination $rimeDir -Force
-if ($hadCustom) {
-  Write-Host "保留了你原有的 default.custom.yaml，请在 schema_list 中加入：- schema: wubi86_pinyin"
+# 两个包共用：拼音词库、术语补全
+Copy-Item (Join-Path $root "data\pinyin_simp.*.yaml") $rimeDir -Force
+foreach ($f in @("wubi_predict", "wubi_predict_switch")) {
+  Copy-Item (Join-Path $root "schema\lua\$f.lua") (Join-Path $rimeDir "lua") -Force
+}
+Copy-Item (Join-Path $root "schema\$schema.schema.yaml") $rimeDir -Force
+if ($Variant -eq "wubi86-pinyin") {
+  Copy-Item (Join-Path $root "data\wubi86_jidian*.yaml") $rimeDir -Force
+  foreach ($f in @("wubi_mixed_filter", "wubi_memory", "wubi_topup")) {
+    Copy-Item (Join-Path $root "schema\lua\$f.lua") (Join-Path $rimeDir "lua") -Force
+  }
+} else {
+  Copy-Item (Join-Path $root "schema\lua\pinyin_filter.lua") (Join-Path $rimeDir "lua") -Force
+}
+
+# default.custom.yaml：本脚本生成的直接重新生成；用户自己的不覆盖，避免丢掉其它方案
+$customPath = Join-Path $rimeDir "default.custom.yaml"
+$ours = -not (Test-Path $customPath) -or ((Get-Content $customPath -TotalCount 1) -match "wubi86-pinyin")
+if ($ours) {
+  $lines = @("# 由 wubi86-pinyin 的安装脚本生成。已有其它方案的用户可以自行合并 schema_list", "patch:", "  schema_list:", "    - schema: $schema")
+  if (Test-Path (Join-Path $rimeDir "$other.schema.yaml")) { $lines += "    - schema: $other" }
+  $lines += "  menu/page_size: 6"
+  [System.IO.File]::WriteAllLines($customPath, $lines, (New-Object System.Text.UTF8Encoding $false))
+} elseif (-not (Select-String -Path $customPath -Pattern $schema -Quiet)) {
+  Write-Host "保留了你原有的 default.custom.yaml，请在 schema_list 中加入：- schema: $schema"
 }
 
 $deployer = Find-WeaselDeployer

@@ -138,7 +138,7 @@ function M.terms()
 end
 
 -- 一个联想词能被哪些输入码前缀匹配：五笔词码、全拼、拼音首字母
--- wubi / pinyin 是 ReverseLookup 对象
+-- wubi / pinyin 是 ReverseLookup 对象；纯拼音方案 wubi 为 nil
 local function first_code(codes, longest)
   local best
   for code in codes:gmatch("%S+") do
@@ -159,11 +159,14 @@ local function wubi_word_code(full)
 end
 
 function M.codes(phrase, wubi, pinyin)
-  local hit = codes_cache[phrase]
+  local key = wubi and phrase or ("\1" .. phrase)  -- 纯拼音方案没有五笔码，分开缓存
+  local hit = codes_cache[key]
   if hit then return hit end
   local result = {}
-  local word = wubi:lookup(phrase)
-  if word ~= "" then
+  local word = wubi and wubi:lookup(phrase) or ""
+  if not wubi then
+    -- 纯拼音方案：只按拼音匹配
+  elseif word ~= "" then
     result[#result + 1] = first_code(word, true)
   else
     local full = {}
@@ -204,7 +207,7 @@ function M.codes(phrase, wubi, pinyin)
     result[#result + 1] = table.concat(spelled)
     result[#result + 1] = table.concat(initials)
   end
-  codes_cache[phrase] = result
+  codes_cache[key] = result
   return result
 end
 
@@ -213,6 +216,65 @@ function M.matches(phrase, input, wubi, pinyin)
     if code:sub(1, #input) == input then return true end
   end
   return false
+end
+
+-- 术语表只扫描出现次数最多的前若干条，保证每次按键的开销有上限
+local TERM_SCAN = 2000
+
+-- 当前输入码能补全的项目术语和续写联想词，作为候选返回，由过滤器插在首选之后。
+-- opts: wubi, pinyin（ReverseLookup，wubi 可为 nil）、prefix（学码前缀，可为 nil）、
+--       term_max, term_min_code, predict_max
+function M.candidates(ctx, opts)
+  local seg = ctx.composition:back()
+  if not seg then return {} end
+  local code = ctx.input:sub(seg.start + 1, seg._end)
+  if code == "" or (opts.prefix and code:sub(1, #opts.prefix) == opts.prefix) then return {} end
+  local want_terms = ctx:get_option("terms") and #code >= opts.term_min_code
+  local want_predict = ctx:get_option("predict")
+  if not (want_terms or want_predict) or not M.available() then return {} end
+
+  local out, seen = {}, {}
+  local function add(text, comment)
+    if not seen[text] then
+      seen[text] = true
+      out[#out + 1] = Candidate("predict", seg.start, seg._end, text, comment)
+    end
+  end
+  if want_terms then
+    local profile, list = M.terms()
+    local comment = "〔术语·" .. profile .. "〕"
+    local n = 0
+    for i = 1, math.min(#list, TERM_SCAN) do
+      if n >= opts.term_max then break end
+      local term = list[i].text
+      if M.matches(term, code, opts.wubi, opts.pinyin) then
+        add(term, comment)
+        n = n + 1
+      end
+    end
+  end
+  if want_predict then
+    local profile, phrases = M.suggestions()
+    local comment = profile ~= "" and ("〔联想·" .. profile .. "〕") or "〔联想〕"
+    local n = 0
+    for _, phrase in ipairs(phrases) do
+      if n >= opts.predict_max then break end
+      if M.matches(phrase, code, opts.wubi, opts.pinyin) then
+        add(phrase, comment)
+        n = n + 1
+      end
+    end
+  end
+  return out
+end
+
+-- 读取过滤器配置中与术语、续写相关的项
+function M.options(config, ns)
+  return {
+    term_max = config:get_int(ns .. "/term_max") or 3,
+    term_min_code = config:get_int(ns .. "/term_min_code") or 2,
+    predict_max = config:get_int(ns .. "/predict_max") or 2,
+  }
 end
 
 -- 轮换资料文件夹：读 folders.txt，在「不用文件夹」和各文件夹之间循环，写 profile.txt

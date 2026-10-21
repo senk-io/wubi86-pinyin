@@ -22,7 +22,17 @@ jobs:
           GOOS=darwin GOARCH=arm64 go build -trimpath -o ../dist/wubi86d-darwin-arm64 .
           GOOS=darwin GOARCH=amd64 go build -trimpath -o ../dist/wubi86d-darwin-amd64 .
           GOOS=windows GOARCH=amd64 go build -trimpath -o ../dist/wubi86d-windows-amd64.exe .
-          cd ../dist && sha256sum wubi86d-* > SHA256SUMS
+      - name: Install packages
+        # 两个安装包：wubi86-pinyin.zip（五笔86·拼音混输）和 pinyin.zip（纯拼音）。
+        # 内容都是这个版本的源码，只是根目录的 VARIANT 不同，安装脚本据此决定装哪个方案。
+        run: |
+          for variant in wubi86-pinyin pinyin; do
+            stage=$(mktemp -d)
+            git archive --format=tar --prefix="$variant/" HEAD | tar -x -C "$stage"
+            echo "$variant" > "$stage/$variant/VARIANT"
+            (cd "$stage" && zip -qr "$GITHUB_WORKSPACE/dist/$variant.zip" "$variant")
+          done
+          cd dist && sha256sum wubi86d-* *.zip > SHA256SUMS
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}

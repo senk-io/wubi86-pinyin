@@ -3,12 +3,20 @@
 # 已经装过鼠须管的，先卸载再从官方 Release 重新安装，保证用的是校验过签名的版本；
 # ~/Library/Rime 中的用户数据（词频等）保留。
 #
-# 用法：sh scripts/install-macos.sh
+# 用法：sh scripts/install-macos.sh [wubi86-pinyin|pinyin]
+#   安装包：wubi86-pinyin 为五笔86·拼音混输，pinyin 为纯拼音；不给出时读取根目录的 VARIANT 文件，
+#   没有则为 wubi86-pinyin。两个包可以先后都装，方案菜单（Control+`）里切换。
 # 环境变量：
 #   SQUIRREL_VERSION  指定鼠须管版本（如 1.1.2），默认取 GitHub 上的最新正式版
 #   SQUIRREL_TEAM_ID  期望的签名团队 ID，默认 28HU5A7B46（上游维护者的 Developer ID）
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
+variant=${1:-$(cat "$root/VARIANT" 2>/dev/null || echo wubi86-pinyin)}
+case "$variant" in
+  wubi86-pinyin) schema=wubi86_pinyin schema_name="五笔86·拼音" ;;
+  pinyin) schema=senk_pinyin schema_name="拼音" ;;
+  *) echo "未知的安装包：$variant（可选 wubi86-pinyin、pinyin）" >&2; exit 1 ;;
+esac
 echo "wubi86-pinyin 安装脚本（版本 $Format:%h$）"
 rime_dir="$HOME/Library/Rime"
 squirrel_app="/Library/Input Methods/Squirrel.app"
@@ -74,18 +82,22 @@ install_squirrel
 
 mkdir -p "$rime_dir"
 
-# 已有的 default.custom.yaml 如果没有启用本方案，备份后替换，备份路径会打印出来
+# default.custom.yaml：本脚本生成的直接重新生成；用户自己的如果已启用本方案就保留，
+# 否则备份后替换，备份路径会打印出来
 custom="$rime_dir/default.custom.yaml"
-if [ -f "$custom" ] && ! grep -q 'wubi86_pinyin' "$custom"; then
-  backup="$custom.bak-$(date +%Y%m%d%H%M%S)"
-  mv "$custom" "$backup"
-  echo "原有的 default.custom.yaml 已备份到 $backup ，其中的其它方案可以自行合并回来。"
-elif [ -f "$custom" ]; then
-  keep="$custom.keep"
-  cp "$custom" "$keep"
+keep=""
+if [ -f "$custom" ] && ! head -n 1 "$custom" | grep -q 'wubi86-pinyin'; then
+  if grep -q "$schema" "$custom"; then
+    keep="$custom.keep"
+    cp "$custom" "$keep"
+  else
+    backup="$custom.bak-$(date +%Y%m%d%H%M%S)"
+    mv "$custom" "$backup"
+    echo "原有的 default.custom.yaml 已备份到 $backup ，其中的其它方案可以自行合并回来。"
+  fi
 fi
-"$root/scripts/assemble.sh" "$rime_dir"
-if [ -n "${keep:-}" ]; then
+"$root/scripts/assemble.sh" "$rime_dir" "$variant"
+if [ -n "$keep" ]; then
   mv "$keep" "$custom"
 fi
 
@@ -115,7 +127,7 @@ case "$selected" in
        | grep -q "$mode" && switched=1 || switched=0 ;;
 esac
 if [ "$switched" = 1 ]; then
-  echo "已安装并切换到鼠须管，可以直接用「五笔86·拼音」打字了。"
+  echo "已安装并切换到鼠须管，可以直接用「${schema_name}」打字了。"
   echo "重启后如果鼠须管在菜单里变成灰色，注销后重新登录一次即可。"
 else
   echo "已安装并重新部署，但没能自动切换到鼠须管。请在菜单栏的输入法里手动选择；如果是灰色，注销后重新登录一次。"

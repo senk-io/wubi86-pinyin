@@ -11,7 +11,7 @@
 schema:
   schema_id: wubi86_pinyin
   name: 五笔86·拼音
-  version: "0.4.1"
+  version: "0.5.0"
   author:
     - 五笔字形发明人 王永民
     - wubi86-pinyin contributors
@@ -113,6 +113,7 @@ wubi_mixed_filter:
   dictionary: wubi86_jidian             # 用于反查五笔编码的码表
   pinyin_dictionary: pinyin_simp        # 用于给联想词注音
   lookup_prefix: "`"
+  short_hint: true                      # 用全码打出有简码的字词时，提示简码
   term_max: 3                           # 每次最多插入的项目术语数
   term_min_code: 2                      # 输入码至少几码才补全术语
   predict_max: 2                        # 续写模式下每次最多插入的联想词数

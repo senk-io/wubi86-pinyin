@@ -11,7 +11,9 @@
 -- 3. 编码提示（开关 code_hint）：
 --    - 不是用五笔打出来的候选，注释里标出最短的五笔编码；
 --    - 五笔候选如果是"忘码"记录里的字词，且当前输入还不是它的完整编码，
---      注释里标出完整编码和忘记次数，帮助记住。
+--      注释里标出完整编码和忘记次数，帮助记住；
+--    - 用全码打出的字词如果有更短的简码（一级、二级、三级简码），注释里标出简码，
+--      如 wqiy -> 你〔简 wq〕（配置 short_hint，默认开）。
 -- 4. 忘码记录：上屏时交给 wubi_memory 记录，见该文件。
 -- 5. 项目术语（开关 terms，默认开）：当前资料文件夹的术语里，五笔词码、全拼或拼音首字母
 --    以当前输入码开头的，插在第 2 位起，见 wubi_predict.lua。
@@ -22,6 +24,7 @@
 --   dictionary: 用于反查的五笔码表名
 --   pinyin_dictionary: 用于给联想词注音的拼音词库
 --   lookup_prefix: 学码模式前缀，默认 "`"
+--   short_hint: 全码打出时是否提示简码，默认 true
 --   term_max: 每次最多插入几个术语，默认 3
 --   term_min_code: 输入码至少几码才补全术语，默认 2（一码匹配面太宽）
 --   predict_max: 每次最多插入几个续写联想词，默认 2
@@ -62,9 +65,9 @@ function M.init(env)
   env.reverse = ReverseLookup(config:get_string(ns .. "/dictionary") or "wubi86_jidian")
   env.pinyin = ReverseLookup(config:get_string(ns .. "/pinyin_dictionary") or "pinyin_simp")
   env.prefix = config:get_string(ns .. "/lookup_prefix") or "`"
-  env.term_max = config:get_int(ns .. "/term_max") or 3
-  env.term_min_code = config:get_int(ns .. "/term_min_code") or 2
-  env.predict_max = config:get_int(ns .. "/predict_max") or 2
+  env.short_hint = config:get_bool(ns .. "/short_hint") ~= false
+  env.opts = predict.options(config, ns)
+  env.opts.wubi, env.opts.pinyin, env.opts.prefix = env.reverse, env.pinyin, env.prefix
   env.commit_conn = env.engine.context.commit_notifier:connect(on_commit)
 end
 
@@ -118,60 +121,12 @@ local function is_emoji(text)
   return true
 end
 
--- 术语表只扫描出现次数最多的前若干条，保证每次按键的开销有上限
-local TERM_SCAN = 2000
-
--- 匹配当前输入码的项目术语和续写联想词，作为新候选返回
-local function predicted(env, ctx)
-  local seg = ctx.composition:back()
-  if not seg then return {} end
-  local code = ctx.input:sub(seg.start + 1, seg._end)
-  if code == "" or code:sub(1, #env.prefix) == env.prefix then return {} end
-  local want_terms = ctx:get_option("terms") and #code >= env.term_min_code
-  local want_predict = ctx:get_option("predict")
-  if not (want_terms or want_predict) or not predict.available() then return {} end
-
-  local out, seen = {}, {}
-  local function add(text, comment)
-    if not seen[text] then
-      seen[text] = true
-      out[#out + 1] = Candidate("predict", seg.start, seg._end, text, comment)
-    end
-  end
-  if want_terms then
-    local profile, list = predict.terms()
-    local comment = "〔术语·" .. profile .. "〕"
-    local n = 0
-    for i = 1, math.min(#list, TERM_SCAN) do
-      if n >= env.term_max then break end
-      local term = list[i].text
-      if predict.matches(term, code, env.reverse, env.pinyin) then
-        add(term, comment)
-        n = n + 1
-      end
-    end
-  end
-  if want_predict then
-    local profile, phrases = predict.suggestions()
-    local comment = profile ~= "" and ("〔联想·" .. profile .. "〕") or "〔联想〕"
-    local n = 0
-    for _, phrase in ipairs(phrases) do
-      if n >= env.predict_max then break end
-      if predict.matches(phrase, code, env.reverse, env.pinyin) then
-        add(phrase, comment)
-        n = n + 1
-      end
-    end
-  end
-  return out
-end
-
 function M.func(translation, env)
   local ctx = env.engine.context
   local hint_on = ctx:get_option("code_hint")
   local emoji_on = ctx:get_option("emoji")
   local seen_wubi, seen_full_phrase = false, false
-  local pending = predicted(env, ctx)  -- 在第一个候选之后插入
+  local pending = predict.candidates(ctx, env.opts)  -- 在第一个候选之后插入
   for cand in translation:iter() do
     local input = ctx.input:sub(cand.start + 1, cand._end)
     local lookup_mode = input:sub(1, #env.prefix) == env.prefix
@@ -201,8 +156,15 @@ function M.func(translation, env)
             cand:get_genuine().comment = "〔" .. shortest_codes(codes) .. "〕"
           else
             local forgot = memory.count(cand.text)
-            if forgot and not has_code(codes, code, true) then
+            local exact = has_code(codes, code, true)
+            if forgot and not exact then
               cand:get_genuine().comment = "〔" .. shortest_codes(codes) .. " 忘" .. forgot .. "〕"
+            elseif exact and env.short_hint then
+              -- 打的是全码，但这个字有更短的简码：提示简码，下次少打几键
+              local short = shortest_codes(codes)
+              if #short:match("%S+") < #code then
+                cand:get_genuine().comment = "〔简 " .. short .. "〕"
+              end
             end
           end
         end

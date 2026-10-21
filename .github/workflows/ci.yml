@@ -33,9 +33,13 @@ jobs:
             "https://raw.githubusercontent.com/lotem/rime-octagram-data/$commit/zh-hans-t-essay-bgw.gram"
           echo "$sha  $RUNNER_TEMP/zh-hans-t-essay-bgw.gram" | sha256sum -c -
       - name: Without grammar
-        run: tests/bench.sh "" 29
+        run: |
+          tests/bench.sh "" 29
+          tests/bench.sh "" 29 pinyin
       - name: With grammar
-        run: tests/bench.sh "$RUNNER_TEMP/zh-hans-t-essay-bgw.gram" 29
+        run: |
+          tests/bench.sh "$RUNNER_TEMP/zh-hans-t-essay-bgw.gram" 34
+          tests/bench.sh "$RUNNER_TEMP/zh-hans-t-essay-bgw.gram" 0 pinyin
 
   helper:
     runs-on: ubuntu-24.04

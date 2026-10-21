@@ -19,6 +19,15 @@ woshizhongguoren
 !1 ggtttrwu
 !1 shujuku
 !1 wqvbshujuku
+# 简码：一、二级简码始终在首位，用户选过别的字也不会挤掉；
+# 用全码打出有简码的字时提示简码（你 wqiy → wq，一 ggll → g）
+g
+!2 gg
+!2 gg
+gg
+wqiy
+ggll
+khlg
 # emoji 默认关闭，不占候选位置
 ryhv
 # 忘码记录：用拼音打出"器"后，五笔打 kk 时提示完整编码和忘记次数；
