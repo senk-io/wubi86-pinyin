@@ -9,30 +9,45 @@
 --   pinyin_dictionary: 用于给术语注音的拼音词库
 --   term_max / term_min_code / predict_max: 同 wubi_mixed_filter
 
-local predict = require("wubi_predict")
+-- 术语、联想出错时只跳过它们，候选照常送出，见 wubi_safe.lua。
+
+local safe = require("wubi_safe")
+local predict = safe.require("wubi_predict")
 
 local M = {}
 
-function M.init(env)
+local function setup(env)
   local config = env.engine.schema.config
   local ns = env.name_space
-  env.opts = predict.options(config, ns)
+  env.opts = safe.call("options", predict.options, config, ns) or {}
   env.opts.pinyin = ReverseLookup(config:get_string(ns .. "/pinyin_dictionary") or "pinyin_simp")
+  return true
+end
+
+local function on_commit(ctx)
+  safe.call("active", predict.touch_active)
+  if ctx:get_option("predict") then
+    local text = ctx:get_commit_text()
+    if text ~= "" then safe.call("predict", predict.on_commit, text) end
+  end
+end
+
+function M.init(env)
+  env.ready = safe.call("init", setup, env)
   env.commit_conn = env.engine.context.commit_notifier:connect(function(ctx)
-    predict.touch_active()
-    if ctx:get_option("predict") then
-      local text = ctx:get_commit_text()
-      if text ~= "" then predict.on_commit(text) end
-    end
+    if env.ready then safe.call("commit", on_commit, ctx) end
   end)
 end
 
 function M.fini(env)
-  env.commit_conn:disconnect()
+  if env.commit_conn then env.commit_conn:disconnect() end
 end
 
 function M.func(translation, env)
-  local pending, exact = predict.candidates(env.engine.context, env.opts)  -- 在第一个候选之后插入
+  local pending, exact
+  if env.ready then
+    pending, exact = safe.call("terms", predict.candidates, env.engine.context, env.opts)  -- 在第一个候选之后插入
+  end
   for cand in translation:iter() do
     local promote = pending and exact and cand.type == "sentence"
     if promote then

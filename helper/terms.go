@@ -69,7 +69,7 @@ func extractTerms(ctx context.Context, o *Ollama, text string, pace *pacer) (map
 }
 
 // pacer 控制后台抽取的节奏，不和打字抢资源：
-//   - 用户最近 idleAfter 内有上屏（busy 返回 true）时先暂停，空闲了再继续；
+//   - 用户最近 idleAfter 内有上屏，或系统内存紧张（busy 返回 true）时先暂停，恢复了再继续；
 //   - 每次调用模型后按占用比例 duty 休息：干了 took，就再歇 took*(1/duty-1)。
 //
 // duty 和 busy 在每次调用时重新取值，插拔电源、开始打字都能及时生效。
