@@ -2,8 +2,11 @@
 # 卸载鼠须管（Squirrel），清理应用、安装记录、输入源和偏好设置。
 # Rime 用户目录 ~/Library/Rime（含词频记录）需要确认后才删除。
 #
-# 用法：sh scripts/uninstall-macos.sh
+# 用法：sh scripts/uninstall-macos.sh [--keep-user-data]
+#   --keep-user-data  保留 ~/Library/Rime，不询问（重新安装时使用）
 set -u
+keep_user_data=0
+[ "${1:-}" = "--keep-user-data" ] && keep_user_data=1
 squirrel_app="/Library/Input Methods/Squirrel.app"
 squirrel="$squirrel_app/Contents/MacOS/Squirrel"
 bundle_id="im.rime.inputmethod.Squirrel"
@@ -23,7 +26,9 @@ rm -rf "$HOME/Library/Caches/$bundle_id" \
        "$HOME/Library/Preferences/$bundle_id.plist"
 
 rime_dir="$HOME/Library/Rime"
-if [ -d "$rime_dir" ]; then
+if [ "$keep_user_data" = 1 ]; then
+  echo "已保留 $rime_dir"
+elif [ -d "$rime_dir" ]; then
   echo "发现 Rime 用户目录 $rime_dir，内容如下："
   ls "$rime_dir"
   printf "是否一并删除？其中包括你的词频记录 [y/N] "
@@ -34,4 +39,8 @@ if [ -d "$rime_dir" ]; then
   esac
 fi
 
-echo "卸载完成。请注销后重新登录，让输入法菜单刷新。"
+if [ "$keep_user_data" = 1 ]; then
+  echo "旧版鼠须管已卸载。"
+else
+  echo "卸载完成。请注销后重新登录，让输入法菜单刷新。"
+fi

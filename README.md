@@ -15,7 +15,7 @@
 
 ## 安装
 
-1. 下载本仓库，然后运行安装脚本。如果还没装 Rime 前端（macOS 是鼠须管，Windows 是小狼毫），脚本会从官方 GitHub Release 下载最新版并安装，过程中会要求输入密码或进行管理员授权。
+1. 下载本仓库，然后运行安装脚本。脚本会从官方 GitHub Release 下载最新的 Rime 前端（macOS 是鼠须管，Windows 是小狼毫），校验签名后安装，过程中会要求输入密码或进行管理员授权。macOS 上如果已经装过鼠须管，会先卸载再重新安装，`~/Library/Rime` 里的用户数据保留。
    - macOS（13 或更高）：`sh scripts/install-macos.sh`
    - Windows：`powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1`
 2. 在输入法菜单里选择「鼠须管」或「小狼毫」，默认方案就是「五笔86·拼音」。

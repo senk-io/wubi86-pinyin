@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
-# 安装到鼠须管（Squirrel）用户目录并重新部署；没装鼠须管时先自动安装。
+# 安装鼠须管（Squirrel）与本方案，并重新部署。
+# 已经装过鼠须管的，先卸载再从官方 Release 重新安装，保证用的是校验过签名的版本；
+# ~/Library/Rime 中的用户数据（词频等）保留。
 #
 # 用法：sh scripts/install-macos.sh
 # 环境变量：
@@ -44,14 +46,18 @@ install_squirrel() {
     exit 1
   fi
 
+  # 新安装包下载并校验通过后才卸载旧版，避免中途失败导致没有输入法可用
+  if [ -e "$squirrel_app" ]; then
+    echo "检测到已安装的鼠须管，先卸载再重新安装（保留 ~/Library/Rime 中的用户数据）。"
+    sh "$root/scripts/uninstall-macos.sh" --keep-user-data
+  fi
+
   echo "正在安装鼠须管，需要输入本机登录密码："
   sudo installer -pkg "$pkg" -target /
   echo "鼠须管 $version 安装完成。"
 }
 
-if [ ! -x "$squirrel" ]; then
-  install_squirrel
-fi
+install_squirrel
 
 mkdir -p "$rime_dir"
 
