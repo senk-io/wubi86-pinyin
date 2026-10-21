@@ -221,6 +221,9 @@ func TestTermIndexIncremental(t *testing.T) {
 	a := filepath.Join(notes, "a.md")
 	os.WriteFile(a, []byte("星辰数据平台上线。星辰数据平台很稳。"), 0o600)
 	os.WriteFile(filepath.Join(notes, "b.txt"), []byte("灰度发布流程"), 0o600)
+	// 依赖目录不抽取
+	os.MkdirAll(filepath.Join(notes, "node_modules", "pkg"), 0o700)
+	os.WriteFile(filepath.Join(notes, "node_modules", "pkg", "README.md"), []byte("星辰数据平台"), 0o600)
 	d, fake := newTestDaemon(t, []Folder{{Name: "星辰", Path: notes}})
 	fake.reply = `["星辰数据平台", "灰度发布", "不存在的词"]`
 	ctx := context.Background()

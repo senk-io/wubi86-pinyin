@@ -162,7 +162,7 @@ func (idx *TermIndex) update(ctx context.Context, o *Ollama, root string, progre
 			return nil
 		}
 		if d.IsDir() {
-			if path != root && strings.HasPrefix(d.Name(), ".") {
+			if skipDir(path, root, d.Name()) {
 				return filepath.SkipDir
 			}
 			return nil

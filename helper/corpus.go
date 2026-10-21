@@ -17,6 +17,17 @@ const (
 
 var textExts = map[string]bool{".md": true, ".markdown": true, ".txt": true}
 
+// 依赖、构建产物等目录里是第三方或生成的内容，不是项目自己的叫法
+var skipDirs = map[string]bool{
+	"node_modules": true, "vendor": true, "dist": true, "build": true, "out": true,
+	"target": true, "__pycache__": true, "venv": true, "Pods": true, "DerivedData": true,
+}
+
+// skipDir 判断遍历资料文件夹时是否跳过这个子目录：隐藏目录和依赖、构建产物目录。
+func skipDir(path, root, name string) bool {
+	return path != root && (strings.HasPrefix(name, ".") || skipDirs[name])
+}
+
 // indexFolder 增量索引一个资料文件夹：只为新增或改动过的文件求向量，
 // 已删除的文件从索引中移除。
 func indexFolder(ctx context.Context, o *Ollama, store *Store, root string) (changed int, err error) {
@@ -33,7 +44,7 @@ func indexFolder(ctx context.Context, o *Ollama, store *Store, root string) (cha
 		}
 		name := d.Name()
 		if d.IsDir() {
-			if path != root && strings.HasPrefix(name, ".") {
+			if skipDir(path, root, name) {
 				return filepath.SkipDir
 			}
 			return nil
