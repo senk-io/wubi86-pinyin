@@ -39,7 +39,7 @@ jobs:
       - name: With grammar
         run: |
           tests/bench.sh "$RUNNER_TEMP/zh-hans-t-essay-bgw.gram" 34
-          tests/bench.sh "$RUNNER_TEMP/zh-hans-t-essay-bgw.gram" 0 pinyin
+          tests/bench.sh "$RUNNER_TEMP/zh-hans-t-essay-bgw.gram" 34 pinyin
 
   helper:
     runs-on: ubuntu-24.04
