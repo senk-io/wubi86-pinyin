@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# 安装本地模型联想所需的常驻进程 wubi86d，以及它依赖的 Ollama 和模型，并设为登录后自动运行。
+# 安装项目术语补全所需的常驻进程 wubi86d，以及它依赖的 Ollama 和模型，并设为登录后自动运行。
 # 前提：已用 install-macos.sh 装好鼠须管和本方案。
 #
 # 用法：sh scripts/install-helper-macos.sh
@@ -104,6 +104,12 @@ cat > "$plist" <<EOF
 </plist>
 EOF
 launchctl bootout "gui/$(id -u)/${label}" >/dev/null 2>&1 || true
+# bootout 不等旧进程退出就返回，马上 bootstrap 会报 5: Input/output error；最多等 5 秒
+i=0
+while launchctl print "gui/$(id -u)/${label}" >/dev/null 2>&1 && [ "$i" -lt 50 ]; do
+  i=$((i + 1))
+  sleep 0.1
+done
 launchctl bootstrap "gui/$(id -u)" "$plist"
 
 # 6. 让输入法重新部署，识别到 wubi86d 目录
@@ -113,7 +119,7 @@ squirrel="/Library/Input Methods/Squirrel.app/Contents/MacOS/Squirrel"
 echo "wubi86d 已安装并在后台运行。试一下："
 "$bin" try 今天天气 || true
 echo
-echo "资料文件夹：编辑 ${data_dir}/config.json 的 folders，例如"
-echo '  "folders": [{"name": "笔记", "path": "~/Documents/笔记"}]'
+echo "项目资料文件夹：编辑 ${data_dir}/config.json 的 folders，例如"
+echo '  "folders": [{"name": "星辰", "path": "~/work/星辰/docs"}]'
 echo "然后运行 launchctl kickstart -k gui/$(id -u)/${label} 让它重新读取配置。"
-echo "打字时按 Control+Shift+R 轮换资料文件夹；联想候选的注释会显示当前文件夹。"
+echo "打字时按 Control+Shift+R 轮换项目；wubi86d terms 查看当前项目抽出的术语。"

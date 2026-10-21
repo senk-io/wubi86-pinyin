@@ -11,7 +11,7 @@
 schema:
   schema_id: wubi86_pinyin
   name: 五笔86·拼音
-  version: "0.4.0"
+  version: "0.4.1"
   author:
     - 五笔字形发明人 王永民
     - wubi86-pinyin contributors

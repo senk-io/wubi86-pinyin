@@ -17,6 +17,26 @@ jobs:
       - name: Run schema tests
         run: tests/run.sh
 
+  pinyin-bench:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install librime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librime-dev librime-bin librime-data librime-plugin-lua librime-plugin-octagram
+      - name: Download grammar (same pinned version as scripts/install-grammar-macos.sh)
+        run: |
+          commit=$(sed -n 's/^commit="\(.*\)"$/\1/p' scripts/install-grammar-macos.sh)
+          sha=$(sed -n 's/^sha256="\(.*\)"$/\1/p' scripts/install-grammar-macos.sh)
+          curl -fsSL -o "$RUNNER_TEMP/zh-hans-t-essay-bgw.gram" \
+            "https://raw.githubusercontent.com/lotem/rime-octagram-data/$commit/zh-hans-t-essay-bgw.gram"
+          echo "$sha  $RUNNER_TEMP/zh-hans-t-essay-bgw.gram" | sha256sum -c -
+      - name: Without grammar
+        run: tests/bench.sh "" 29
+      - name: With grammar
+        run: tests/bench.sh "$RUNNER_TEMP/zh-hans-t-essay-bgw.gram" 29
+
   helper:
     runs-on: ubuntu-24.04
     defaults:

@@ -4,12 +4,13 @@
 
 目标是解决一个具体的问题：**五笔打到一半忘了码，想要的字又不在首位，只能按数字去选。**
 
-## 现在能做什么（v0.3）
+## 现在能做什么（v0.4）
 
 - **五笔 86 为主，拼音随时混输**：不用切换模式，直接打拼音。五笔候选总是排在前面。
 - **拼音候选显示五笔编码**：例如打 `nihao` 会看到 `你好〔wqvb〕`、`你〔wq〕`，打一次就顺便学会。
 - **学码模式**：以反引号开头，例如 `` `shu ``，只出拼音候选并附带编码。
 - **混输去噪**：四码五笔不会被误当成拼音简拼。比如 `adnt` 只出"藏 茂 荿"，不会冒出"安东尼他"。
+- **拼音整句连打**：一口气打一长串拼音直接出整句，例如 `wozhengzaixiedaima` → 我正在写代码。五笔打满四码后接着打字母会自动顶字上屏，但只要整串还可能是拼音就不顶，长拼音不会被打断。
 - **用户词频**：同码字里你选过的会排到前面，下次直接按空格上屏。
 - **记住你忘码的字**：用拼音打出来的字词会记为"忘码"。之后用五笔打到它、但还没打全编码时，候选会提示完整编码和忘记次数，例如 `器〔kkd 忘1〕`。用五笔全码打对一次，次数减一，减到 0 自动移除。
   记录只保存在本机 Rime 用户目录的 `wubi86_pinyin_weak.txt`，只记上屏的字词，不记按键过程，也不联网。
@@ -32,6 +33,17 @@ sh scripts/install-helper-macos.sh   # 安装 Ollama、qwen2.5:7b、bge-m3 和 w
 - 开关 `terms` 可以临时关闭术语补全。
 - **续写联想**（默认关闭）：根据上文猜下一个词。在 `config.json` 里把 `continuation` 设为 `true` 并打开开关 `predict` 后启用；这个模式会把上屏文字记入本机输入历史用于检索，`history` 设为 `false` 可以不记，`wubi86d forget-history` 可以清空。
 - 不开任何端口，模型地址默认只允许本机。细节见 [docs/architecture.md](docs/architecture.md)。
+
+### 拼音语言模型（可选）
+
+装上后长拼音的整句首选更准：基准 36 句里，整句全对从 29 句提高到 35 句（`tests/bench.sh`），每次按键多花不到 0.1 毫秒，五笔输入不受影响。
+
+```sh
+sh scripts/install-grammar-macos.sh            # 下载约 39MB 的模型并校验，可重复运行
+sh scripts/install-grammar-macos.sh --remove   # 卸载
+```
+
+模型是 [lotem/rime-octagram-data](https://github.com/lotem/rime-octagram-data) 的 `zh-hans-t-essay-bgw.gram`，采用 LGPL-3.0，所以不随本仓库分发，由脚本从固定版本下载。脚本会写入 `~/Library/Rime/wubi86_pinyin.custom.yaml`；如果你已经有自己的这个文件，脚本会停下来，不会覆盖。
 
 ## 安装
 
@@ -67,7 +79,9 @@ tests/run.sh            # 比对 tests/expected.txt
 tests/run.sh --update   # 修改方案后重新生成期望结果
 ```
 
-`tests/cases.txt` 每行一个输入码；`!k 码` 表示输入后选第 k 个候选上屏；`$ 命令` 交给 shell 执行（用来模拟 wubi86d）；`@ 按键` 只发送按键。
+`tests/cases.txt` 每行一个输入码；`!k 码` 表示输入后选第 k 个候选上屏；`$ 命令` 交给 shell 执行（用来模拟 wubi86d）；`@ 按键` 只发送按键；`+ 开关` / `- 开关` 打开或关闭方案开关。
+
+拼音长句基准：`tests/bench.sh [模型.gram] [最少正确句数]`，句子在 `tests/pinyin_bench.txt`；带模型时需要 `librime-plugin-octagram`。
 
 常驻进程：`cd helper && go test ./...`。
 
