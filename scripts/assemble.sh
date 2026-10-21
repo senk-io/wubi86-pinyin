@@ -2,8 +2,8 @@
 # 把 schema/ 与 data/ 中某个安装包需要的文件汇总成 Rime 用户目录所需的平铺结构。
 # 用法：scripts/assemble.sh <目标目录> [wubi86-pinyin|pinyin]
 #   不给出安装包时，读取仓库根目录的 VARIANT 文件（发布的 zip 里有），没有则为 wubi86-pinyin。
-#   wubi86-pinyin：五笔86·拼音混输（方案 wubi86_pinyin）
-#   pinyin：纯拼音（方案 senk_pinyin）
+#   wubi86-pinyin：SENK五笔混拼输入法86版（方案 wubi86_pinyin）
+#   pinyin：SENK拼音输入法（方案 senk_pinyin）
 # 生成的 default.custom.yaml 把本包的方案放在第一位；目标目录里已有另一个包的方案时一并列出。
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)

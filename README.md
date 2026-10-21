@@ -1,6 +1,8 @@
-# wubi86-pinyin
+# 森克输入法（SENK）
 
-五笔字形 86 版 + 拼音混输的 [Rime](https://rime.im) 输入方案，面向 Windows（小狼毫）和 macOS（鼠须管）。
+基于 [Rime](https://rime.im) 的五笔 86 版 + 拼音混输输入方案，面向 Windows（小狼毫）和 macOS（鼠须管）。包括两款：**SENK五笔混拼输入法86版** 和 **SENK拼音输入法**。
+
+> 输入法菜单栏里显示的仍是「鼠须管」或「小狼毫」：那是本方案运行所在的 Rime 前端程序的名字。方案菜单（`` Control+` ``）和顶部显示的是短名「SENK五笔」「SENK拼音」，以节省空间。
 
 目标是解决一个具体的问题：**五笔打到一半忘了码，想要的字又不在首位，只能按数字去选。**
 
@@ -8,8 +10,8 @@
 
 | 安装包 | 方案 | 适合 |
 |---|---|---|
-| `wubi86-pinyin.zip` | 五笔86·拼音 | 用五笔为主，忘码时直接打拼音；一、二级简码固定在首位，全码打出有简码的字会提示简码 |
-| `pinyin.zip` | 拼音 | 只用拼音：全拼、简拼、整句连打，不含五笔 |
+| `wubi86-pinyin.zip` | SENK五笔混拼输入法86版（菜单里显示「SENK五笔」） | 用五笔为主，忘码时直接打拼音；一、二级简码固定在首位，全码打出有简码的字会提示简码 |
+| `pinyin.zip` | SENK拼音输入法（菜单里显示「SENK拼音」） | 只用拼音：全拼、简拼、整句连打，不含五笔 |
 
 两个包都支持可选的拼音语言模型；可以先后都装，在方案菜单（`` Control+` ``）里切换。
 
@@ -63,7 +65,7 @@ macOS 上第一次装鼠须管后，系统通常要注销并重新登录才会�
 
 | 路径 | 内容 | 许可证 |
 |---|---|---|
-| `schema/` | 方案配置与 Lua 过滤器（`wubi86_pinyin` 五笔86·拼音，`senk_pinyin` 拼音） | MIT |
+| `schema/` | 方案配置与 Lua 过滤器（`wubi86_pinyin` SENK五笔混拼输入法86版，`senk_pinyin` SENK拼音输入法） | MIT |
 | `data/` | 第三方码表与拼音词库（未修改） | Apache-2.0，见 [data/NOTICE.md](data/NOTICE.md) |
 | `scripts/` | 汇总与安装脚本 | MIT |
 | `tests/` | 用 librime 驱动方案的端到端测试 | MIT |
@@ -79,7 +81,7 @@ tests/run.sh            # 两个方案分别比对 tests/expected.txt 和 tests/
 tests/run.sh --update   # 修改方案后重新生成期望结果
 ```
 
-`tests/cases.txt`（五笔86·拼音）和 `tests/pinyin_cases.txt`（拼音）每行一个输入码；`!k 码` 表示输入后选第 k 个候选上屏；`$ 命令` 交给 shell 执行；`@ 按键` 只发送按键；`+ 开关` / `- 开关` 打开或关闭方案开关。
+`tests/cases.txt`（SENK五笔混拼输入法86版）和 `tests/pinyin_cases.txt`（SENK拼音输入法）每行一个输入码；`!k 码` 表示输入后选第 k 个候选上屏；`$ 命令` 交给 shell 执行；`@ 按键` 只发送按键；`+ 开关` / `- 开关` 打开或关闭方案开关。
 
 拼音长句基准：`tests/bench.sh [模型.gram] [最少正确句数] [安装包]`，句子在 `tests/pinyin_bench.txt`；带模型时需要 `librime-plugin-octagram`。
 
