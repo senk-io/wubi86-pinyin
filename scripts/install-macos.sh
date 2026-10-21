@@ -90,6 +90,16 @@ if [ -n "${keep:-}" ]; then
 fi
 
 "$squirrel" --enable-input-source >/dev/null 2>&1 || true
+# 刚装完时鼠须管进程还没运行（安装包要求注销），--reload 只通知运行中的进程，
+# 什么也不会部署；所以先在后台启动它，等进程出现再触发部署
+if ! pgrep -x Squirrel >/dev/null 2>&1; then
+  open -g "$squirrel_app"
+  i=0
+  while [ "$i" -lt 15 ] && ! pgrep -x Squirrel >/dev/null 2>&1; do
+    sleep 1
+    i=$((i + 1))
+  done
+fi
 "$squirrel" --reload
 echo "已安装并重新部署。请在菜单栏的输入法里选「鼠须管」，就能用「五笔86·拼音」打字了。"
 echo "如果菜单栏里还看不到鼠须管，请注销后重新登录一次。"
