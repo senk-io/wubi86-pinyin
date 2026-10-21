@@ -49,7 +49,7 @@ func extractTerms(ctx context.Context, o *Ollama, text string, pace *pacer) (map
 			return nil, err
 		}
 		start := time.Now()
-		out, err := o.Generate(ctx, termSystemPrompt, window, 256, stringList)
+		out, err := o.Generate(ctx, termSystemPrompt, window, 256, stringList, "1m")
 		if err != nil {
 			return nil, err
 		}

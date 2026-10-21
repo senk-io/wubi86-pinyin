@@ -177,7 +177,7 @@ func (d *Daemon) predict(ctx context.Context, seq, recent string) error {
 	if err != nil {
 		log.Printf("检索失败，仅用上文联想：%v", err)
 	}
-	out, err := d.llm.Generate(ctx, systemPrompt(d.cfg.MaxPhrases), userPrompt(recent, refs), 96, stringList)
+	out, err := d.llm.Generate(ctx, systemPrompt(d.cfg.MaxPhrases), userPrompt(recent, refs), 96, stringList, "30m")
 	if err != nil {
 		return err
 	}

@@ -50,15 +50,16 @@ func (o *Ollama) post(ctx context.Context, path string, req, resp any) error {
 	return json.NewDecoder(res.Body).Decode(resp)
 }
 
-// Generate 生成一段文本。keep_alive 让模型常驻内存，避免每次冷启动。
+// Generate 生成一段文本。keepAlive 是用完后模型在内存里保留多久（如 "30m"）：
+// 续写要随打随用，保留得久以免冷启动；后台抽术语用短的，抽完很快释放内存。
 // format 非空时按该 JSON Schema 约束输出（Ollama 的结构化输出）。
-func (o *Ollama) Generate(ctx context.Context, system, prompt string, maxTokens int, format any) (string, error) {
+func (o *Ollama) Generate(ctx context.Context, system, prompt string, maxTokens int, format any, keepAlive string) (string, error) {
 	req := map[string]any{
 		"model":      o.chatModel,
 		"system":     system,
 		"prompt":     prompt,
 		"stream":     false,
-		"keep_alive": "30m",
+		"keep_alive": keepAlive,
 		"options": map[string]any{
 			"num_predict": maxTokens,
 			"temperature": 0.3,

@@ -279,12 +279,12 @@ func TestAutoDuty(t *testing.T) {
 		hw           hwInfo
 		want         float64
 	}{
-		{"darwin", "arm64", hwInfo{memBytes: 36 << 30}, 0.5},
-		{"darwin", "arm64", hwInfo{memBytes: 36 << 30, onBattery: true}, 0.25},
-		{"darwin", "arm64", hwInfo{memBytes: 8 << 30}, 0.25},
-		{"darwin", "amd64", hwInfo{memBytes: 16 << 30}, 0.25},
-		{"windows", "amd64", hwInfo{memBytes: 8 << 30, onBattery: true}, 0.0625},
-		{"linux", "amd64", hwInfo{}, 0.25},
+		{"darwin", "arm64", hwInfo{memBytes: 36 << 30}, 0.25},
+		{"darwin", "arm64", hwInfo{memBytes: 36 << 30, onBattery: true}, 0.125},
+		{"darwin", "arm64", hwInfo{memBytes: 8 << 30}, 0.125},
+		{"darwin", "amd64", hwInfo{memBytes: 16 << 30}, 0.125},
+		{"windows", "amd64", hwInfo{memBytes: 8 << 30, onBattery: true}, 0.03125},
+		{"linux", "amd64", hwInfo{}, 0.125},
 	}
 	for _, c := range cases {
 		if got := autoDuty(c.goos, c.goarch, c.hw); got != c.want {

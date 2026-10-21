@@ -7,7 +7,8 @@ import (
 )
 
 // 后台抽取术语的自动限速：根据机器情况决定占用模型的时间比例（见 Config.IndexDuty）。
-//   - Apple 芯片的 Mac 由 GPU 跑模型，起点 0.5；其它机器（Intel Mac、Windows）多半靠 CPU，起点 0.25
+//   - Apple 芯片的 Mac 由 GPU 跑模型，起点 0.25（干一秒歇三秒；实测 M4 Max 上 0.5 风扇就明显转起来）；
+//     其它机器（Intel Mac、Windows）多半靠 CPU，起点 0.125
 //   - 内存少于 16GB：减半（7B 模型本身要占约 5GB）
 //   - 正在用电池：减半
 // 电源状态每分钟最多查一次。
@@ -35,9 +36,9 @@ func currentHW() hwInfo {
 
 // autoDuty 由机器情况算出占用比例。
 func autoDuty(goos, goarch string, hw hwInfo) float64 {
-	duty := 0.25
+	duty := 0.125
 	if goos == "darwin" && goarch == "arm64" {
-		duty = 0.5
+		duty = 0.25
 	}
 	if hw.memBytes > 0 && hw.memBytes < 16<<30 {
 		duty /= 2
