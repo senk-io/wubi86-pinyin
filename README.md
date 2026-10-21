@@ -15,11 +15,12 @@
 
 ## 安装
 
-1. 先安装 Rime 前端：Windows 用[小狼毫](https://rime.im/download/)（0.15 或更高），macOS 用[鼠须管](https://rime.im/download/)（0.18 或更高）。这两个版本都自带 librime-lua。
-2. 下载本仓库，然后运行安装脚本：
-   - macOS：`scripts/install-macos.sh`
+1. 下载本仓库，然后运行安装脚本。如果还没装 Rime 前端（macOS 是鼠须管，Windows 是小狼毫），脚本会从官方 GitHub Release 下载最新版并安装，过程中会要求输入密码或进行管理员授权。
+   - macOS（13 或更高）：`sh scripts/install-macos.sh`
    - Windows：`powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1`
-3. 在输入法菜单里选择「五笔86·拼音」。
+2. 在输入法菜单里选择「鼠须管」或「小狼毫」，默认方案就是「五笔86·拼音」。
+
+macOS 上如果装完在菜单栏看不到鼠须管，注销后重新登录一次即可。
 
 如果你原来已经有 `default.custom.yaml`，脚本不会覆盖它，会提示你手动把 `wubi86_pinyin` 加进 `schema_list`。
 
