@@ -18,7 +18,7 @@ esac
 mkdir -p "$dest/lua"
 # 两个包共用：拼音词库、术语补全
 cp "$root"/data/pinyin_simp.*.yaml "$dest/"
-cp "$root"/schema/lua/wubi_safe.lua "$root"/schema/lua/wubi_predict.lua "$root"/schema/lua/wubi_predict_switch.lua "$dest/lua/"
+cp "$root"/schema/lua/wubi_predict.lua "$root"/schema/lua/wubi_predict_switch.lua "$dest/lua/"
 cp "$root/schema/$schema.schema.yaml" "$dest/"
 if [ "$variant" = wubi86-pinyin ]; then
   cp "$root"/data/wubi86_jidian*.yaml "$dest/"

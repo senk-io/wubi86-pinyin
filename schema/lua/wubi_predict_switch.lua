@@ -2,8 +2,7 @@
 -- 配置：wubi_predict/switch_key，默认 Control+Shift+R
 -- 切换结果显示在之后术语候选的注释里，例如〔术语·星辰〕。
 
-local safe = require("wubi_safe")
-local predict = safe.require("wubi_predict")
+local predict = require("wubi_predict")
 
 local kNoop, kAccepted = 2, 1
 
@@ -23,23 +22,16 @@ local function same_key(a, b)
 end
 
 function M.init(env)
-  env.switch_key = safe.call("switch init", function()
-    return KeyEvent(env.engine.schema.config:get_string("wubi_predict/switch_key") or "Control+Shift+R")
-  end)
+  local key = env.engine.schema.config:get_string("wubi_predict/switch_key") or "Control+Shift+R"
+  env.switch_key = KeyEvent(key)
 end
 
-local function switch(key, env)
-  if key:release() or not env.switch_key or not same_key(key, env.switch_key)
-    or not predict.available() then
-    return false
+function M.func(key, env)
+  if key:release() or not same_key(key, env.switch_key) or not predict.available() then
+    return kNoop
   end
   predict.next_profile()
-  return true
-end
-
--- 出错时不吃掉按键
-function M.func(key, env)
-  return safe.call("switch", switch, key, env) and kAccepted or kNoop
+  return kAccepted
 end
 
 return M

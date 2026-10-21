@@ -40,7 +40,7 @@ sh scripts/install-helper-macos.sh   # 安装 Ollama、qwen2.5:7b、bge-m3 和 w
 - **项目资料文件夹**：在 `~/Library/Rime/wubi86d/config.json` 的 `folders` 里添加，例如 `{"name": "星辰", "path": "~/work/星辰/docs"}`。可以添加多个，每个项目一个。目前读取 `.md` 和 `.txt`。
 - **切换项目**：打字时按 `Control+Shift+R` 轮换，也可以运行 `wubi86d use 星辰`；`wubi86d folders` 查看全部。
 - **查看和更新术语表**：`wubi86d terms` 查看当前项目抽出的术语；`wubi86d index` 立即重新抽取（平时每 5 分钟检查一次，只处理新增或改动的文件）。
-- **后台抽取占用**：第一次抽取大文件夹会让本地模型忙一阵（之后只处理改动过的文件）。默认按机器自动限速：Apple 芯片的 Mac 干一秒歇三秒，Intel Mac 和 Windows 更慢一些，内存少于 16GB 或正在用电池时再减半；你在打字时暂停；系统内存紧张（活动监视器里内存压力变黄或变红）时暂停并立即释放模型，恢复后再继续。抽取时模型用完 1 分钟就从内存释放。想固定就在 `config.json` 里设 `index_duty`，例如 `0.25` 为四分之一，`1` 为全速。随时可以暂停：`launchctl bootout gui/$(id -u)/io.senk.wubi86d`，重新运行 `install-helper-macos.sh` 会从停下的地方接着抽。
+- **后台抽取占用**：第一次抽取大文件夹会让本地模型忙一阵（之后只处理改动过的文件）。默认按机器自动限速：Apple 芯片的 Mac 干一秒歇三秒，Intel Mac 和 Windows 更慢一些，内存少于 16GB 或正在用电池时再减半；你在打字时暂停。抽取时模型用完 1 分钟就从内存释放。想固定就在 `config.json` 里设 `index_duty`，例如 `0.25` 为四分之一，`1` 为全速。随时可以暂停：`launchctl bootout gui/$(id -u)/io.senk.wubi86d`，重新运行 `install-helper-macos.sh` 会从停下的地方接着抽。
 - 开关 `terms` 可以临时关闭术语补全。
 - **续写联想**（默认关闭）：根据上文猜下一个词。在 `config.json` 里把 `continuation` 设为 `true` 并打开开关 `predict` 后启用；这个模式会把上屏文字记入本机输入历史用于检索，`history` 设为 `false` 可以不记，`wubi86d forget-history` 可以清空。
 - 不开任何端口，模型地址默认只允许本机。细节见 [docs/architecture.md](docs/architecture.md)。

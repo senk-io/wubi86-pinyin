@@ -12,9 +12,6 @@ import (
 //   - 内存少于 16GB：减半（7B 模型本身要占约 5GB）
 //   - 正在用电池：减半
 // 电源状态每分钟最多查一次。
-//
-// 另外，系统内存紧张时（memoryTight）整个后台抽取暂停，直到恢复：7B 模型要占约 5GB，
-// 内存吃紧时再加载它会把输入法等前台程序挤进 swap，甚至卡死（2026-10-21 在用户 Mac 上发生过）。
 
 type hwInfo struct {
 	memBytes  uint64 // 0 表示未知
@@ -59,7 +56,3 @@ func (c Config) indexDuty() float64 {
 	}
 	return autoDuty(runtime.GOOS, runtime.GOARCH, currentHW())
 }
-
-// memoryTight 报告系统内存是否紧张；每次调用都重新查询（开销是一次系统调用或一个短命令）。
-// 测试中替换。
-var memoryTight = probeMemoryTight

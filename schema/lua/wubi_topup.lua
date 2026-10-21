@@ -52,36 +52,27 @@ local function pinyin_viable(code)
   return reach[n] == true
 end
 
-local safe = require("wubi_safe")
-
 local M = {}
 
 function M.init(env)
-  env.code_length = safe.call("topup init", function()
-    return env.engine.schema.config:get_int("wubi_topup/code_length")
-  end) or 4
+  env.code_length = env.engine.schema.config:get_int("wubi_topup/code_length") or 4
 end
 
-local function topup(key, env)
-  if key:release() or key:ctrl() or key:alt() or key:super() then return end
+function M.func(key, env)
+  if key:release() or key:ctrl() or key:alt() or key:super() then return kNoop end
   local code = key.keycode
-  if code < 0x61 or code > 0x7a then return end
+  if code < 0x61 or code > 0x7a then return kNoop end
   local ctx = env.engine.context
   local input = ctx.input
   if #input ~= env.code_length or input:find("[^a-z]") or ctx:get_option("ascii_mode") then
-    return
+    return kNoop
   end
   local cand = ctx:get_selected_candidate()
-  if not cand or cand.start ~= 0 or cand._end ~= #input then return end
+  if not cand or cand.start ~= 0 or cand._end ~= #input then return kNoop end
   local kind = cand:get_genuine().type
-  if kind ~= "table" and kind ~= "user_table" then return end
-  if pinyin_viable(input .. string.char(code)) then return end
+  if kind ~= "table" and kind ~= "user_table" then return kNoop end
+  if pinyin_viable(input .. string.char(code)) then return kNoop end
   ctx:commit()
-end
-
--- 顶字出错时什么都不做，按键照常交给后面的组件
-function M.func(key, env)
-  safe.call("topup", topup, key, env)
   return kNoop
 end
 

@@ -82,12 +82,6 @@ func (o *Ollama) Generate(ctx context.Context, system, prompt string, maxTokens 
 	return resp.Response, nil
 }
 
-// Unload 让 Ollama 立即释放对话模型占用的内存（keep_alive 为 0 且不带提示词）。
-func (o *Ollama) Unload(ctx context.Context) error {
-	var resp struct{}
-	return o.post(ctx, "/api/generate", map[string]any{"model": o.chatModel, "keep_alive": 0}, &resp)
-}
-
 // Embed 批量求向量。
 func (o *Ollama) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 	req := map[string]any{"model": o.embedModel, "input": texts, "keep_alive": "30m"}

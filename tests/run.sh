@@ -34,38 +34,4 @@ done <<LIST
 wubi86-pinyin wubi86_pinyin cases.txt expected.txt
 pinyin senk_pinyin pinyin_cases.txt pinyin_expected.txt
 LIST
-
-# 附加功能出错时基本输入不受影响：把术语/联想、忘码记录模块换成加载即报错或每次调用都报错的版本，
-# 基本用例的结果必须和正常时完全一样（见 schema/lua/wubi_safe.lua）。
-[ "${1:-}" = "--update" ] && exit $status
-while read -r variant schema cases; do
-  healthy="$work/$variant-healthy"
-  "$root/scripts/assemble.sh" "$healthy" "$variant"
-  grep -v '^#' "$here/$cases" \
-    | RIME_USER="$healthy" "$work/rime_probe" "$shared" "$healthy" "$schema" 6 2>/dev/null > "$work/healthy.txt"
-  for mode in load call; do
-    broken="$work/$variant-$mode"
-    "$root/scripts/assemble.sh" "$broken" "$variant"
-    mkdir -p "$broken/wubi86d"
-    printf '笔记\n' > "$broken/wubi86d/folders.txt"  # 模拟已装 wubi86d，让术语逻辑真正被调用
-    for m in wubi_predict wubi_memory; do
-      [ -f "$broken/lua/$m.lua" ] || continue
-      if [ "$mode" = load ]; then
-        echo 'error("injected load failure")' > "$broken/lua/$m.lua"
-      else
-        echo 'return setmetatable({}, { __index = function() return function() error("injected call failure") end end })' > "$broken/lua/$m.lua"
-      fi
-    done
-    grep -v '^#' "$here/$cases" \
-      | RIME_USER="$broken" "$work/rime_probe" "$shared" "$broken" "$schema" 6 2>/dev/null > "$work/broken.txt"
-    if diff -u "$work/healthy.txt" "$work/broken.txt"; then
-      echo "$variant: basic input survives add-on $mode failure"
-    else
-      status=1
-    fi
-  done
-done <<LIST
-wubi86-pinyin wubi86_pinyin fault_cases.txt
-pinyin senk_pinyin pinyin_fault_cases.txt
-LIST
 exit $status

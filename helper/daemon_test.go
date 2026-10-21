@@ -20,7 +20,6 @@ type fakeOllama struct {
 	lastPrompt string
 	reply      string
 	calls      int
-	unloads    int
 }
 
 func (f *fakeOllama) handler(t *testing.T) http.Handler {
@@ -41,18 +40,8 @@ func (f *fakeOllama) handler(t *testing.T) http.Handler {
 		json.NewEncoder(w).Encode(map[string]any{"embeddings": out})
 	})
 	mux.HandleFunc("/api/generate", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			Prompt    string
-			KeepAlive any `json:"keep_alive"`
-		}
+		var req struct{ Prompt string }
 		json.NewDecoder(r.Body).Decode(&req)
-		if req.Prompt == "" && req.KeepAlive == float64(0) {
-			f.mu.Lock()
-			f.unloads++
-			f.mu.Unlock()
-			w.Write([]byte("{}"))
-			return
-		}
 		f.mu.Lock()
 		f.lastPrompt = req.Prompt
 		f.calls++
@@ -360,31 +349,5 @@ func TestLoadCommonWords(t *testing.T) {
 	w := loadCommonWords(path)
 	if !w["怪物"] || w["怪"] || len(w) != 1 {
 		t.Fatalf("common words = %v", w)
-	}
-}
-
-func TestPauseAndUnloadWhenMemoryTight(t *testing.T) {
-	d, fake := newTestDaemon(t, nil)
-	tight := false
-	memoryTight = func() bool { return tight }
-	t.Cleanup(func() { memoryTight = probeMemoryTight })
-
-	if d.busy() {
-		t.Fatal("busy with free memory and no typing")
-	}
-	tight = true
-	if !d.busy() || !d.busy() {
-		t.Fatal("not busy while memory is tight")
-	}
-	if fake.unloads != 1 {
-		t.Fatalf("unloaded %d times, want once on entering the tight state", fake.unloads)
-	}
-	// 内存紧张时不调用模型做续写
-	if err := d.predict(context.Background(), newSeq(), "今天天气"); err != nil || fake.calls != 0 {
-		t.Fatalf("predict under memory pressure: err=%v calls=%d", err, fake.calls)
-	}
-	tight = false
-	if d.busy() {
-		t.Fatal("still busy after memory recovered")
 	}
 }

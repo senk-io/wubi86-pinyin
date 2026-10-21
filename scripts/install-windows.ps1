@@ -47,7 +47,7 @@ switch ($Variant) {
 
 # 两个包共用：拼音词库、术语补全
 Copy-Item (Join-Path $root "data\pinyin_simp.*.yaml") $rimeDir -Force
-foreach ($f in @("wubi_safe", "wubi_predict", "wubi_predict_switch")) {
+foreach ($f in @("wubi_predict", "wubi_predict_switch")) {
   Copy-Item (Join-Path $root "schema\lua\$f.lua") (Join-Path $rimeDir "lua") -Force
 }
 Copy-Item (Join-Path $root "schema\$schema.schema.yaml") $rimeDir -Force
