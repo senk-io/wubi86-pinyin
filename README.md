@@ -40,16 +40,24 @@ sh scripts/install-grammar-macos.sh --remove   # 卸载
 
 ## 安装
 
-1. 下载并解压其中一个安装包，然后在解压出的目录里运行安装脚本（脚本根据包里的 `VARIANT` 文件决定装哪个方案；从源码安装时可以在命令后加 `pinyin` 或 `wubi86-pinyin` 指定）。脚本会从官方 GitHub Release 下载最新的 Rime 前端（macOS 是鼠须管，Windows 是小狼毫），校验签名后安装，过程中会要求输入密码或进行管理员授权。macOS 上如果已经装过鼠须管，会先卸载再重新安装，`~/Library/Rime` 里的用户数据保留。
-   - macOS（13 或更高）：`sh scripts/install-macos.sh`
-   - Windows：`powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1`
+1. 下载并解压其中一个安装包，然后在解压出的目录里运行安装脚本（脚本根据包里的 `VARIANT` 文件决定装哪个方案；从源码安装时可以在命令后加 `pinyin` 或 `wubi86-pinyin` 指定）。
+   - macOS（13 或更高）：
+     ```sh
+     sh scripts/install-macos.sh           # 预览：列出检查结果和将要执行的每一步，不做任何改动
+     sh scripts/install-macos.sh --apply   # 执行：输入 yes 确认后才开始
+     ```
+     - 已经装了鼠须管的，不卸载、不重装、不结束它的进程，只更新方案文件并通知它重新部署。
+     - 没装的，从官方 GitHub Release 下载固定版本（鼠须管 1.1.2），校验 sha256 和签名后安装，需要输入登录密码。
+     - 开始前检查系统版本、磁盘空间、内存压力（活动监视器里内存压力是黄或红时不安装）和是否有别的安装在进行；任何一项不满足就退出，不做改动。
+     - 改动前把 `~/Library/Rime` 和鼠须管的偏好设置备份到 `~/Library/Application Support/senk-input/backup-时间`；任何一步失败都会停止并自动恢复。日志在 `~/Library/Logs/senk-input/`。
+   - Windows：`powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1`（会从官方 GitHub Release 下载最新的小狼毫，校验签名后安装）
 2. 在输入法菜单里选择「鼠须管」或「小狼毫」，默认方案就是所装的包对应的方案。
 
-macOS 上如果装完在菜单栏看不到鼠须管，注销后重新登录一次即可。
+macOS 上第一次装鼠须管后，系统通常要注销并重新登录才会启动它。脚本不会替你注销，也不会强行启动输入法，会说明情况后停下，由你决定。
 
 卸载：`sh scripts/uninstall-macos.sh`。它会删除鼠须管应用、安装记录和偏好设置；`~/Library/Rime`（含词频记录）会先询问再删。
 
-如果你原来自己写的 `default.custom.yaml` 里没有启用本方案，脚本会把它备份成 `default.custom.yaml.bak-时间戳` 再替换，备份路径会打印出来。
+如果你原来自己写的 `default.custom.yaml` 里没有启用本方案，安装脚本会替换它，原文件在上面的备份目录里。
 
 ## 目录结构
 

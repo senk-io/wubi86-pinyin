@@ -41,3 +41,42 @@ jobs:
           tests/bench.sh "$RUNNER_TEMP/zh-hans-t-essay-bgw.gram" 34
           tests/bench.sh "$RUNNER_TEMP/zh-hans-t-essay-bgw.gram" 34 pinyin
 
+
+  scripts-lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: sh -n (all scripts)
+        run: for f in scripts/*.sh tests/*.sh; do sh -n "$f" || exit 1; done
+      - name: shellcheck
+        run: shellcheck scripts/install-macos.sh scripts/assemble.sh
+
+  install-macos-preview:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preview changes nothing
+        run: |
+          snapshot() {
+            for d in "$HOME/Library/Rime" "$HOME/Library/Application Support/senk-input" "$HOME/Library/Logs/senk-input"; do
+              [ -e "$d" ] && find "$d" -exec stat -f '%N %m %z' {} + || echo "absent $d"
+            done
+          }
+          snapshot > "$RUNNER_TEMP/before"
+          sh scripts/install-macos.sh
+          sh scripts/install-macos.sh pinyin
+          snapshot > "$RUNNER_TEMP/after"
+          diff "$RUNNER_TEMP/before" "$RUNNER_TEMP/after"
+      - name: Pinned Squirrel matches sha256 and signature
+        run: |
+          version=$(sed -n 's/^squirrel_version="\(.*\)"$/\1/p' scripts/install-macos.sh)
+          sha=$(sed -n 's/^squirrel_sha256="\(.*\)"$/\1/p' scripts/install-macos.sh)
+          team=$(sed -n 's/^squirrel_team_id="\([^"]*\)".*/\1/p' scripts/install-macos.sh)
+          pkg="$RUNNER_TEMP/Squirrel-$version.pkg"
+          curl -fsSL -o "$pkg" "https://github.com/rime/squirrel/releases/download/$version/Squirrel-$version.pkg"
+          echo "$sha  $pkg" | shasum -a 256 -c -
+          pkgutil --expand-full "$pkg" "$RUNNER_TEMP/expanded"
+          app=$(find "$RUNNER_TEMP/expanded" -type d -name Squirrel.app -prune | head -n 1)
+          codesign --verify --deep --strict "$app"
+          actual=$(codesign -dvv "$app" 2>&1 | sed -n 's/^TeamIdentifier=//p')
+          test "$actual" = "$team"
