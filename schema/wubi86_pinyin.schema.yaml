@@ -1,0 +1,113 @@
+# Rime schema
+# encoding: utf-8
+#
+# 五笔86 + 拼音混输
+# - 五笔候选优先；同一段编码同时用拼音查询，拼音候选附带五笔编码提示
+# - 前缀 `（反引号）：纯拼音"学码"模式，只出拼音候选并显示五笔编码
+# - 开启用户词典，常用字词自动前移
+
+schema:
+  schema_id: wubi86_pinyin
+  name: 五笔86·拼音
+  version: "0.1.0"
+  author:
+    - 五笔字形发明人 王永民
+    - wubi86-pinyin contributors
+  description: |
+    五笔字形 86 版与拼音混输。码表来自 rime-wubi86-jidian，拼音词库来自 rime-pinyin-simp，
+    两者均为 Apache-2.0，详见 data/NOTICE.md。
+  dependencies:
+    - pinyin_simp
+
+switches:
+  - name: ascii_mode
+    reset: 0
+    states: [ 中, 英 ]
+  - name: full_shape
+    states: [ 半角, 全角 ]
+  - name: code_hint
+    reset: 1
+    states: [ 无提示, 编码提示 ]
+  - name: ascii_punct
+    states: [ 。，, ．， ]
+
+engine:
+  processors:
+    - ascii_composer
+    - recognizer
+    - key_binder
+    - speller
+    - punctuator
+    - selector
+    - navigator
+    - express_editor
+  segmentors:
+    - ascii_segmentor
+    - matcher
+    - affix_segmentor@pinyin_lookup
+    - abc_segmentor
+    - punct_segmentor
+    - fallback_segmentor
+  translators:
+    - punct_translator
+    - table_translator                  # 五笔
+    - script_translator@pinyin          # 混输中的拼音
+    - script_translator@pinyin_lookup   # z 前缀学码模式
+  filters:
+    - lua_filter@*wubi_mixed_filter     # 混输去噪 + 五笔编码提示
+    - uniquifier
+
+speller:
+  alphabet: zyxwvutsrqponmlkjihgfedcba
+  delimiter: " '"
+  max_code_length: 4                    # 五笔四码，但不顶字上屏，拼音可以继续输入
+  auto_select: false
+
+translator:
+  dictionary: wubi86_jidian
+  enable_charset_filter: true
+  enable_completion: true               # 未打全的编码也提示后续候选
+  enable_sentence: false
+  enable_user_dict: true                # 记录用户字频，常用字自动前移
+  enable_encoder: true                  # 依据连续上屏自动造词
+  encode_commit_history: false
+  max_phrase_length: 4
+  user_dict: wubi86_pinyin_user
+  db_class: userdb
+  initial_quality: 1.5                  # 五笔候选排在拼音之前
+  disable_user_dict_for_patterns:
+    - "^`.*$"
+
+pinyin:
+  dictionary: pinyin_simp
+  enable_user_dict: true
+  user_dict: wubi86_pinyin_pinyin_user
+  enable_completion: false
+  initial_quality: 0.5
+  preedit_format:
+    - xform/([nl])v/$1ü/
+    - xform/([jqxy])v/$1u/
+
+pinyin_lookup:
+  tag: pinyin_lookup
+  prefix: "`"
+  suffix: "'"
+  tips: 〔拼音学码〕
+  dictionary: pinyin_simp
+  enable_user_dict: false
+  closing_tips: ""
+
+wubi_mixed_filter:
+  dictionary: wubi86_jidian             # 用于反查五笔编码的码表
+  lookup_prefix: "`"
+
+punctuator:
+  import_preset: default
+
+key_binder:
+  import_preset: default
+
+recognizer:
+  import_preset: default
+  patterns:
+    pinyin_lookup: "^`[a-z']*$"

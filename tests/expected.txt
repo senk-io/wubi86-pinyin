@@ -1,0 +1,12 @@
+wq: 1.你 2.爷~b 3.釜~f 4.釡~f 5.低~a 6.爸~c
+ggtt: 1.五笔 2.来来往往 3.开玩笑
+khlg: 1.中国 2.跨国 3.跑车
+adnt: 1.藏 2.茂 3.荿
+nihao: 1.你好〔wqvb〕 2.你〔wq〕 3.拟〔rny〕 4.尼〔nx〕 5.呢〔knx〕 6.泥〔inx〕
+zhongguo: 1.中国〔khlg〕 2.中古〔khdg〕 3.中〔k〕 4.种〔tkh〕 5.重〔tgj〕 6.钟〔qkhh〕
+xian: 1.先〔tfq〕 2.线〔xg〕 3.县〔egc〕 4.现〔gm〕 5.西安〔sgpv〕 6.咁〔kafg〕
+wo: 1.伙 2.我〔q〕 3.喔〔kngf〕 4.窝〔pwkw〕 5.握〔rng〕 6.卧〔ahnh〕
+`shu: 1.书〔nnh〕 2.数〔ovt〕 3.树〔scf〕 4.输〔lwg〕 5.属〔ntk〕 6.熟〔ybv〕
+`zhong: 1.中〔k〕 2.种〔tkh〕 3.重〔tgj〕 4.钟〔qkhh〕 5.仲〔wkhh〕 6.众〔www〕
+commit adnt -> 茂
+adnt: 1.茂 2.藏 3.荿

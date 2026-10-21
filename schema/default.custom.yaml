@@ -1,0 +1,5 @@
+# 把本方案设为默认；已有其它方案的用户可以自行合并 schema_list
+patch:
+  schema_list:
+    - schema: wubi86_pinyin
+  menu/page_size: 6

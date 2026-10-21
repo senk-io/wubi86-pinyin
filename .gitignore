@@ -1,0 +1,5 @@
+/dist/
+*.userdb/
+*.userdb.txt
+build/
+.DS_Store

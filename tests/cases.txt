@@ -1,0 +1,13 @@
+# 每行一个输入码；"!k 码" 表示输入后选第 k 个候选上屏（用于测试用户词频）
+wq
+ggtt
+khlg
+adnt
+nihao
+zhongguo
+xian
+wo
+`shu
+`zhong
+!2 adnt
+adnt
