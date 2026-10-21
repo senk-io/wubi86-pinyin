@@ -270,7 +270,7 @@ func (d *Daemon) termListPath(name string) string {
 
 func (d *Daemon) reindexTerms(ctx context.Context, f Folder) {
 	idx := d.terms[f.Name]
-	n, err := idx.update(ctx, d.llm, f.Path, func(file string, done, total int, reused bool) {
+	n, err := idx.update(ctx, d.llm, f.Path, d.cfg.IndexDuty, func(file string, done, total int, reused bool) {
 		note := ""
 		if reused {
 			note = "（与已抽取的文件内容相同，直接复用）"

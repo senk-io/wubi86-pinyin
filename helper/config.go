@@ -29,6 +29,7 @@ type Config struct {
 	TopK         int      `json:"top_k"`        // 检索条数
 	MaxPhrases   int      `json:"max_phrases"`  // 每次给出的联想数
 	AllowRemote  bool     `json:"allow_remote"` // 默认只允许本机模型地址
+	IndexDuty    float64  `json:"index_duty"`   // 后台抽取术语时占用模型的时间比例，0.5 即干一秒歇一秒；1 为不限速
 }
 
 func defaultConfig() Config {
@@ -40,6 +41,7 @@ func defaultConfig() Config {
 		History:    true,
 		TopK:       4,
 		MaxPhrases: 5,
+		IndexDuty:  0.5,
 	}
 }
 
