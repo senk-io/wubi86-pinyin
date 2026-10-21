@@ -8,6 +8,6 @@ function run(argv) {
   const filter = $.NSDictionary.dictionaryWithObjectForKey($(argv[0]), $('TISPropertyInputSourceID'))
   const list = ObjC.castRefToObject($.TISCreateInputSourceList(filter, true))
   if (list.count === 0) return 'absent'
-  const enabled = ObjC.castRefToObject($.TISGetInputSourceProperty(list.objectAtIndex(0), $('TISPropertyInputSourceIsEnabled')))
-  return enabled.boolValue ? 'enabled' : 'disabled'
+  const enabled = ObjC.unwrap(ObjC.castRefToObject($.TISGetInputSourceProperty(list.objectAtIndex(0), $('TISPropertyInputSourceIsEnabled'))))
+  return enabled === true || enabled === 1 ? 'enabled' : 'disabled'
 }
