@@ -29,8 +29,11 @@
 --   term_min_code: 输入码至少几码才补全术语，默认 2（一码匹配面太宽）
 --   predict_max: 每次最多插入几个续写联想词，默认 2
 
-local memory = require("wubi_memory")
-local predict = require("wubi_predict")
+-- 去噪、提示、术语都是附加功能，任何一处出错都只跳过它自己，候选照常送出，见 wubi_safe.lua。
+
+local safe = require("wubi_safe")
+local memory = safe.require("wubi_memory")
+local predict = safe.require("wubi_predict")
 
 local M = {}
 
@@ -49,31 +52,39 @@ local function on_commit(ctx)
       local text = cand.text
       -- 只记录中文等非 ASCII 上屏；联想词不算忘码
       if text:find("[\128-\255]") and cand:get_genuine().type ~= "predict" then
-        memory.record(text, is_from_pinyin(cand))
+        safe.call("memory", memory.record, text, is_from_pinyin(cand))
       end
     end
   end
-  predict.touch_active()
+  safe.call("active", predict.touch_active)
   if ctx:get_option("predict") then
     local text = ctx:get_commit_text()
-    if text ~= "" then predict.on_commit(text) end
+    if text ~= "" then safe.call("predict", predict.on_commit, text) end
   end
 end
 
-function M.init(env)
+local function setup(env)
   local config = env.engine.schema.config
   local ns = env.name_space
   env.reverse = ReverseLookup(config:get_string(ns .. "/dictionary") or "wubi86_jidian")
   env.pinyin = ReverseLookup(config:get_string(ns .. "/pinyin_dictionary") or "pinyin_simp")
   env.prefix = config:get_string(ns .. "/lookup_prefix") or "`"
   env.short_hint = config:get_bool(ns .. "/short_hint") ~= false
-  env.opts = predict.options(config, ns)
+  env.opts = safe.call("options", predict.options, config, ns) or {}
   env.opts.wubi, env.opts.pinyin, env.opts.prefix = env.reverse, env.pinyin, env.prefix
-  env.commit_conn = env.engine.context.commit_notifier:connect(on_commit)
+  return true
+end
+
+function M.init(env)
+  -- 初始化失败（如码表缺失）时过滤器原样放行全部候选
+  env.ready = safe.call("init", setup, env)
+  env.commit_conn = env.engine.context.commit_notifier:connect(function(ctx)
+    if env.ready then safe.call("commit", on_commit, ctx) end
+  end)
 end
 
 function M.fini(env)
-  env.commit_conn:disconnect()
+  if env.commit_conn then env.commit_conn:disconnect() end
 end
 
 -- 最短的编码作为提示；同长的全部保留
@@ -122,54 +133,71 @@ local function is_emoji(text)
   return true
 end
 
+-- 编码提示：写在候选注释里
+local function annotate(cand, code, env)
+  local codes = env.reverse:lookup(cand.text)
+  if codes == "" then return end
+  if not has_code(codes, code, false) then
+    cand:get_genuine().comment = "〔" .. shortest_codes(codes) .. "〕"
+    return
+  end
+  local forgot = safe.call("memory", memory.count, cand.text)
+  local exact = has_code(codes, code, true)
+  if forgot and not exact then
+    cand:get_genuine().comment = "〔" .. shortest_codes(codes) .. " 忘" .. forgot .. "〕"
+  elseif exact and env.short_hint then
+    -- 打的是全码，但这个字有更短的简码：提示简码，下次少打几键
+    local short = shortest_codes(codes)
+    if #short:match("%S+") < #code then
+      cand:get_genuine().comment = "〔简 " .. short .. "〕"
+    end
+  end
+end
+
+-- 判断候选是不是噪音，并更新 state 中跨候选的状态；返回 true 表示丢掉
+local function is_noise(cand, ctx, env, state)
+  local input = ctx.input:sub(cand.start + 1, cand._end)
+  local lookup_mode = input:sub(1, #env.prefix) == env.prefix
+  local code = lookup_mode and input:sub(#env.prefix + 1) or input
+  local from_pinyin = is_from_pinyin(cand)
+  local rest = #ctx.input:sub(cand.start + 1)
+  local full = from_pinyin and syllable_length(cand.preedit) >= rest
+
+  local noise = false
+  if from_pinyin and not lookup_mode then
+    noise = is_abbreviated(cand.preedit)
+      or (state.seen_wubi and not full)
+      or (state.seen_full_phrase and cand.type == "sentence")
+  end
+  if not state.emoji_on and is_emoji(cand.text) then
+    noise = true
+  end
+
+  state.seen_wubi = state.seen_wubi or not from_pinyin
+  state.seen_full_phrase = state.seen_full_phrase or (full and cand.type ~= "sentence")
+
+  if not noise and state.hint_on then
+    safe.call("hint", annotate, cand, code, env)
+  end
+  return noise
+end
+
+-- 候选的 yield 都在 pcall 之外：附加逻辑出错时 is_noise 返回 nil，候选照常送出
 function M.func(translation, env)
+  if not env.ready then
+    for cand in translation:iter() do yield(cand) end
+    return
+  end
   local ctx = env.engine.context
-  local hint_on = ctx:get_option("code_hint")
-  local emoji_on = ctx:get_option("emoji")
-  local seen_wubi, seen_full_phrase = false, false
-  local pending, exact = predict.candidates(ctx, env.opts)  -- 在第一个候选之后插入
+  local state = {
+    hint_on = ctx:get_option("code_hint"),
+    emoji_on = ctx:get_option("emoji"),
+    seen_wubi = false,
+    seen_full_phrase = false,
+  }
+  local pending, exact = safe.call("terms", predict.candidates, ctx, env.opts)  -- 在第一个候选之后插入
   for cand in translation:iter() do
-    local input = ctx.input:sub(cand.start + 1, cand._end)
-    local lookup_mode = input:sub(1, #env.prefix) == env.prefix
-    local code = lookup_mode and input:sub(#env.prefix + 1) or input
-    local from_pinyin = is_from_pinyin(cand)
-    local rest = #ctx.input:sub(cand.start + 1)
-    local full = from_pinyin and syllable_length(cand.preedit) >= rest
-
-    local noise = false
-    if from_pinyin and not lookup_mode then
-      noise = is_abbreviated(cand.preedit)
-        or (seen_wubi and not full)
-        or (seen_full_phrase and cand.type == "sentence")
-    end
-    if not emoji_on and is_emoji(cand.text) then
-      noise = true
-    end
-
-    seen_wubi = seen_wubi or not from_pinyin
-    seen_full_phrase = seen_full_phrase or (full and cand.type ~= "sentence")
-
-    if not noise then
-      if hint_on then
-        local codes = env.reverse:lookup(cand.text)
-        if codes ~= "" then
-          if not has_code(codes, code, false) then
-            cand:get_genuine().comment = "〔" .. shortest_codes(codes) .. "〕"
-          else
-            local forgot = memory.count(cand.text)
-            local exact = has_code(codes, code, true)
-            if forgot and not exact then
-              cand:get_genuine().comment = "〔" .. shortest_codes(codes) .. " 忘" .. forgot .. "〕"
-            elseif exact and env.short_hint then
-              -- 打的是全码，但这个字有更短的简码：提示简码，下次少打几键
-              local short = shortest_codes(codes)
-              if #short:match("%S+") < #code then
-                cand:get_genuine().comment = "〔简 " .. short .. "〕"
-              end
-            end
-          end
-        end
-      end
+    if not safe.call("filter", is_noise, cand, ctx, env, state) then
       if pending and exact and cand.type == "sentence" then
         yield(exact)  -- 首选是拼音凑出来的整句，全拼完全一致的术语排到它前面
       end

@@ -3,3 +3,5 @@
 package main
 
 func probeHW() hwInfo { return hwInfo{} }
+
+func probeMemoryTight() bool { return false }

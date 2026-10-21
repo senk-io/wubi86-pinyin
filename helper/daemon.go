@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 )
@@ -51,6 +52,7 @@ type Daemon struct {
 	folders map[string]*Store
 	terms   map[string]*TermIndex
 
+	tight    atomic.Bool // 上次检查时系统内存是否紧张
 	lastSeq  string
 	lastStat time.Time
 	buffer   string // 尚未入库的输入历史
@@ -173,8 +175,8 @@ func readContext(path string) (seq, commit, recent string, err error) {
 
 func (d *Daemon) predict(ctx context.Context, seq, recent string) error {
 	recent = tailRunes(strings.TrimSpace(recent), contextRunes)
-	if recent == "" {
-		return nil
+	if recent == "" || d.memoryTight() {
+		return nil // 内存紧张时不加载模型，这次不出联想
 	}
 	profile := d.profile()
 	refs, err := d.retrieve(ctx, tailRunes(recent, queryRunes), profile)
@@ -292,6 +294,31 @@ func (d *Daemon) commonWords() map[string]bool {
 	return d.common
 }
 
+// busy 判断后台抽取是否该暂停：用户正在打字，或系统内存紧张。
+func (d *Daemon) busy() bool {
+	return d.memoryTight() || d.typing()
+}
+
+// memoryTight 查询系统内存是否紧张。刚变紧张时立即释放模型（不等 keep_alive 到期）并记日志，
+// 恢复时也记一次。
+func (d *Daemon) memoryTight() bool {
+	tight := memoryTight()
+	if d.tight.Swap(tight) == tight {
+		return tight
+	}
+	if tight {
+		log.Printf("系统内存紧张：暂停后台任务，并释放模型 %s", d.cfg.ChatModel)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := d.llm.Unload(ctx); err != nil {
+			log.Printf("释放模型失败：%v", err)
+		}
+	} else {
+		log.Printf("系统内存恢复正常：继续后台任务")
+	}
+	return tight
+}
+
 // typing 判断用户是否正在打字：Lua 每次上屏时（最多每 5 秒一次）更新 active.txt。
 func (d *Daemon) typing() bool {
 	info, err := os.Stat(d.path("active.txt"))
@@ -304,7 +331,7 @@ func (d *Daemon) termListPath(name string) string {
 
 func (d *Daemon) reindexTerms(ctx context.Context, f Folder) {
 	idx := d.terms[f.Name]
-	n, err := idx.update(ctx, d.llm, f.Path, &pacer{duty: d.cfg.indexDuty, busy: d.typing}, func(file string, done, total int, reused bool) {
+	n, err := idx.update(ctx, d.llm, f.Path, &pacer{duty: d.cfg.indexDuty, busy: d.busy}, func(file string, done, total int, reused bool) {
 		note := ""
 		if reused {
 			note = "（与已抽取的文件内容相同，直接复用）"
@@ -328,6 +355,9 @@ func (d *Daemon) reindexTerms(ctx context.Context, f Folder) {
 }
 
 func (d *Daemon) reindexVectors(ctx context.Context, f Folder) {
+	if d.memoryTight() {
+		return // 下一轮再做
+	}
 	// 索引时先复制一份，求向量期间不阻塞联想
 	d.mu.Lock()
 	work := &Store{path: d.folders[f.Name].path, entries: d.folders[f.Name].entries}
