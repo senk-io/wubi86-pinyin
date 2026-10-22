@@ -49,13 +49,13 @@ sh scripts/install-grammar-macos.sh --remove   # 卸载
      sh scripts/install-macos.sh --apply   # 执行：输入 yes 确认后才开始
      ```
      - 从 [senk-io/senk-input-macos](https://github.com/senk-io/senk-input-macos/releases) 下载固定版本的 SENK 程序，校验 sha256 和签名后装到 `~/Library/Input Methods`，不需要输入密码。已装的是同一版本时不重装。
-     - 装好后在系统里启用「SENK五笔」「SENK拼音」（只启用已装方案对应的那一项），选中刚装的那一项，通知 SENK 重新部署并等待完成。
+     - 装好后启用已装方案对应的「SENK五笔」「SENK拼音」，选中刚装的那一项，通知 SENK 重新部署并等待完成。
      - 开始前检查系统版本、磁盘空间、内存压力（活动监视器里内存压力是黄或红时不安装）和是否有别的安装在进行；任何一项不满足就退出，不做改动。
      - 改动前把 `~/Library/Rime`、SENK 的偏好设置和原来的程序备份到 `~/Library/Application Support/senk-input/backup-时间`；任何一步失败都会停止并自动恢复。日志在 `~/Library/Logs/senk-input/`。
    - Windows：`powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1`（会从官方 GitHub Release 下载最新的小狼毫，校验签名后安装）
 2. 在菜单栏的输入法菜单里选择「SENK五笔」或「SENK拼音」（Windows 上选「小狼毫」）。
 
-「系统设置 → 键盘 → 输入法 → 添加」的列表由系统缓存，新装后可能要注销并重新登录才出现 SENK；脚本已经直接启用了它，不用再手动添加。脚本不会替你注销，也不会强行启动输入法。
+新版 macOS 不让脚本自动启用第三方输入法（实测 macOS 26），第一次安装时脚本会提示你到「系统设置 → 键盘 → 输入法 → 编辑… → +」里添加「SENK五笔」「SENK拼音」，添加好后按回车继续。添加列表由系统缓存，新装后可能要注销并重新登录才出现 SENK。脚本不会替你注销，也不会强行启动输入法。
 
 卸载：`sh scripts/uninstall-macos.sh` 预览，加 `--apply` 执行。它会停用并删除 SENK 程序和偏好设置，不需要输入密码；`~/Library/Rime`（含词频记录）默认保留，加 `--remove-user-data` 才删除。改动前都会备份到 `~/Library/Application Support/senk-input/uninstall-时间`。
 

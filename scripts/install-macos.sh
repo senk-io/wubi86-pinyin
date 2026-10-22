@@ -219,6 +219,7 @@ else
 fi
 echo "  3. 把方案「${schema_name}」的文件复制到 ${rime_dir}（default.custom.yaml 的处理规则见脚本注释）"
 echo "  4. 在系统里注册并启用 SENK 的输入法（已装方案对应的「SENK五笔」「SENK拼音」），选中「${schema_name}」"
+echo "     系统不让脚本自动启用时，提示你在系统设置里添加，添加好后按回车继续"
 echo "  5. 再查一次内存压力，然后通知 SENK 重新部署，等待部署结果（最多 ${deploy_timeout} 秒）"
 echo "     SENK 没有运行时不部署，也不手动启动它，文件会在它下次启动时生效"
 echo "  6. 验证：SENK 在运行、部署出的方案文件存在、输入法已启用"
@@ -328,17 +329,38 @@ if [ "$(source_state "$primary")" = absent ]; then
   registered=1
   wait_state "$primary" present 15 || fail "注册后 15 秒内系统里仍然没有 $primary"
 fi
+# 启用要看系统「已启用」列表（source_state），不看输入模式自己的 IsEnabled：带模式的输入法本体没启用时，
+# 模式的 IsEnabled 可能仍为 1。macOS 26 上实测：程序调用 TISEnableInputSource 启用输入法本体返回成功但不生效，
+# 只能由用户在系统设置里添加。所以自动启用不成功时请用户添加，不当作安装失败
+all_enabled() {
+  for m in $modes; do [ "$(source_state "$m")" = enabled ] || return 1; done
+}
 # shellcheck disable=SC2086  # modes 是空格分隔的输入源列表
-senk --enable-input-source $modes || fail "--enable-input-source 失败（见日志）"
-for m in $modes; do
-  wait_state "$m" enabled 10 || fail "$m 没有启用"
+senk --enable-input-source $modes || log "注意：--enable-input-source 返回错误（见日志）"
+i=0
+while [ "$i" -lt 5 ] && ! all_enabled; do
+  sleep 1
+  i=$((i + 1))
 done
-senk --select-input-source "$primary" || fail "--select-input-source 失败（见日志）"
-log "第 4 步完成：已启用${modes}，选中 $primary"
+if ! all_enabled; then
+  log "第 4 步：系统没有让脚本自动启用 SENK 的输入法，需要你手动添加（只需一次）："
+  echo "  打开「系统设置 → 键盘 → 输入法」，点「编辑…」，左下角点「+」，选「简体中文」，"
+  echo "  添加「SENK五笔」$( [ "${modes#*Pinyin}" = "$modes" ] || echo "和「SENK拼音」")。列表里没有 SENK 时，注销并重新登录一次后再添加。"
+  printf "添加好后按回车继续（暂时不添加也按回车，安装照常完成，之后再添加即可）："
+  read -r _ </dev/tty
+fi
+selected=0
+if [ "$(source_state "$primary")" = enabled ]; then
+  senk --select-input-source "$primary" || fail "--select-input-source 失败（见日志）"
+  selected=1
+  log "第 4 步完成：已启用并选中 $primary"
+else
+  log "第 4 步：$primary 还没有启用，跳过选中。添加后在菜单栏的输入法菜单里选「${schema_name}」即可"
+fi
 
 # 5. 重新部署。系统在选中输入法后会启动 SENK，最多等 15 秒
 i=0
-while [ "$i" -lt 15 ] && ! senk_running; do
+while [ "$selected" = 1 ] && [ "$i" -lt 15 ] && ! senk_running; do
   sleep 1
   i=$((i + 1))
 done
@@ -387,8 +409,11 @@ if [ "$deployed" = 1 ]; then
   senk_running || fail "部署后 SENK 不在运行"
   [ -f "$rime_dir/build/$schema.schema.yaml" ] || fail "没有找到部署出的 build/$schema.schema.yaml"
 fi
-[ "$(source_state "$primary")" = enabled ] || fail "$primary 没有启用"
-log "第 6 步完成：验证通过"
+if [ "$selected" = 1 ]; then
+  log "第 6 步完成：验证通过"
+else
+  log "第 6 步完成：文件和程序已就位；「${schema_name}」还没有添加到输入法，添加后即可使用"
+fi
 log "安装完成。备份在 ${backup_dir}，日志在 $log_file"
 echo
 echo "请在菜单栏的输入法菜单里选「${schema_name}」，确认打 ${test_hint}。"
