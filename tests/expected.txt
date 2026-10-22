@@ -57,3 +57,7 @@ commit woAbc -> 伙Abc
 woAbc:
 commit Ab{Return}wo -> Ab
 Ab{Return}wo: 1.伙 2.侎~y 3.偻~v 4.我〔q〕 5.喔〔kngf〕 6.窝〔pwkw〕
+,:
+\:
+commit , -> ，
+,:

@@ -23,8 +23,8 @@ switches:
     states: [ 中, 英 ]
   - name: full_shape
     states: [ 半角, 全角 ]
-  - name: ascii_punct
-    states: [ 。，, ．， ]
+  - name: ascii_punct                  # 半角标点：标点键直接输出 , . / 等 ASCII 字符；SENK 菜单里也可以切换
+    states: [ 全角标点, 半角标点 ]
 
 engine:
   processors:
@@ -75,6 +75,9 @@ punctuator:
 
 key_binder:
   import_preset: default
+  bindings:
+    __append:
+      - { when: always, accept: Control+period, toggle: ascii_punct }   # Control+. 切换全角/半角标点
 
 recognizer:
   import_preset: default

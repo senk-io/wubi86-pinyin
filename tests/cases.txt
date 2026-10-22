@@ -56,3 +56,9 @@ Hello wo
 U.S. 
 woAbc
 Ab{Return}wo
+# Control+. 切换全角/半角标点：半角时标点键交给应用输入 ASCII 字符（不上屏任何东西），再按一次恢复全角
+@ {Control+period}
+,
+\
+@ {Control+period}
+,
