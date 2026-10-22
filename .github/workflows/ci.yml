@@ -49,7 +49,10 @@ jobs:
       - name: sh -n (all scripts)
         run: for f in scripts/*.sh tests/*.sh; do sh -n "$f" || exit 1; done
       - name: shellcheck
-        run: shellcheck scripts/install-macos.sh scripts/assemble.sh
+        run: shellcheck scripts/install-macos.sh scripts/uninstall-macos.sh scripts/install-grammar-macos.sh scripts/assemble.sh
+      - name: 脚本和说明里只有 SENK，没有上游前端的名字
+        run: |
+          if grep -n -i -e squirrel -e 鼠须管 -e 鼠鬚管 scripts/*.sh scripts/*.js README.md; then exit 1; fi
 
   install-macos-preview:
     runs-on: macos-14
@@ -63,7 +66,7 @@ jobs:
           echo "current=$cur state=$(q "$cur") ABC=$(q com.apple.keylayout.ABC) US=$(q com.apple.keylayout.US)"
           [ "$(q "$cur")" = enabled ]
           [ "$(q no.such.input.source)" = absent ]
-          [ "$(q im.rime.inputmethod.Squirrel.Hans)" = absent ]
+          [ "$(q io.senk.inputmethod.SenkWubi.Wubi)" = absent ]
       - name: Preview changes nothing
         run: |
           snapshot() {
@@ -74,20 +77,21 @@ jobs:
           snapshot > "$RUNNER_TEMP/before"
           sh scripts/install-macos.sh
           sh scripts/install-macos.sh pinyin
+          sh scripts/uninstall-macos.sh
           snapshot > "$RUNNER_TEMP/after"
           diff "$RUNNER_TEMP/before" "$RUNNER_TEMP/after"
-      - name: Pinned Squirrel matches sha256 and signature
+      - name: Pinned SENK matches sha256 and signature
         run: |
-          version=$(sed -n 's/^squirrel_version="\(.*\)"$/\1/p' scripts/install-macos.sh)
-          sha=$(sed -n 's/^squirrel_sha256="\(.*\)"$/\1/p' scripts/install-macos.sh)
-          team=$(sed -n 's/^squirrel_team_id="\([^"]*\)".*/\1/p' scripts/install-macos.sh)
-          pkg="$RUNNER_TEMP/Squirrel-$version.pkg"
-          curl -fsSL -o "$pkg" "https://github.com/rime/squirrel/releases/download/$version/Squirrel-$version.pkg"
-          echo "$sha  $pkg" | shasum -a 256 -c -
-          pkgutil --expand-full "$pkg" "$RUNNER_TEMP/expanded"
-          app=$(find "$RUNNER_TEMP/expanded" -type d -name Squirrel.app -prune | head -n 1)
+          version=$(sed -n 's/^senk_version="\(.*\)"$/\1/p' scripts/install-macos.sh)
+          sha=$(sed -n 's/^senk_sha256="\(.*\)"$/\1/p' scripts/install-macos.sh)
+          zip="$RUNNER_TEMP/SenkWubi-$version.zip"
+          curl -fsSL -o "$zip" "https://github.com/senk-io/senk-input-macos/releases/download/v$version/SenkWubi-$version.zip"
+          echo "$sha  $zip" | shasum -a 256 -c -
+          ditto -x -k "$zip" "$RUNNER_TEMP/x"
+          app="$RUNNER_TEMP/x/SenkWubi.app"
           codesign --verify --deep --strict "$app"
-          actual=$(codesign -dvv "$app" 2>&1 | sed -n 's/^TeamIdentifier=//p')
-          test "$actual" = "$team"
-          # 安装脚本从这一项读已安装鼠须管的版本号
+          [ "$(codesign -dv "$app" 2>&1 | sed -n 's/^Identifier=//p')" = io.senk.inputmethod.SenkWubi ]
+          # 安装脚本从这一项判断已装的版本
           [ "$(plutil -extract CFBundleVersion raw -o - "$app/Contents/Info.plist")" = "$version" ]
+          lipo -archs "$app/Contents/MacOS/SenkWubi" | grep -q arm64
+          lipo -archs "$app/Contents/MacOS/SenkWubi" | grep -q x86_64

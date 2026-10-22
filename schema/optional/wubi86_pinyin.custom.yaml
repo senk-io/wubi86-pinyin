@@ -1,7 +1,7 @@
 # wubi86-pinyin: grammar
 # 拼音整句语言模型（可选）。由 scripts/install-grammar-macos.sh 复制为
 # Rime 用户目录下的同名文件，卸载时删除；请不要手工改这个文件。
-# 需要同目录下有 zh-hans-t-essay-bgw.gram 和 librime-octagram 插件（鼠须管、小狼毫自带）。
+# 需要同目录下有 zh-hans-t-essay-bgw.gram 和 librime-octagram 插件（SENK 程序、小狼毫自带）。
 #
 # collocation_min_length 取 3：取 2 时短搭配权重过高，会出「有想」「有话」这类错。
 patch:

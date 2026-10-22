@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # 可选：安装拼音整句语言模型，一口气打一长串拼音时整句首选更准（基准 29/36 → 35/36，见 tests/bench.sh）。
 # 模型 zh-hans-t-essay-bgw.gram 来自 lotem/rime-octagram-data，LGPL-3.0，不随本仓库分发：
-# 由本脚本从固定版本下载并校验 SHA-256。鼠须管自带加载它的 librime-octagram 插件。
+# 由本脚本从固定版本下载并校验 SHA-256。SENK 程序自带加载它的 librime-octagram 插件。
 # 两个安装包的方案（SENK五笔混拼输入法86版、SENK拼音输入法）都适用；装了哪个就配置哪个，之后再装另一个包时重新运行即可。
 #
 # 用法：sh scripts/install-grammar-macos.sh            安装（可重复运行）
@@ -14,21 +14,16 @@ commit="f8ce3b534733e489a8470a7c2adf5a154e8ea069"
 sha256="d3cb2438c1fdcd6a855dd6ca8f5c1060a29273c6b64c2c2c69af67cd71b6aa7e"
 url="https://raw.githubusercontent.com/lotem/rime-octagram-data/${commit}/${gram}"
 marker="# wubi86-pinyin: grammar"
-squirrel_app="/Library/Input Methods/Squirrel.app"
-squirrel="$squirrel_app/Contents/MacOS/Squirrel"
+app="$HOME/Library/Input Methods/SenkWubi.app"
 
-# 重新部署；鼠须管进程没运行时 --reload 不起作用，先在后台启动
+# 通知 SENK 重新部署；它没在运行时不手动启动（RULES.md 第 7 节），下次启动时会自动部署
 reload() {
-  [ -x "$squirrel" ] || return 0
-  if ! pgrep -x Squirrel >/dev/null 2>&1; then
-    open -g "$squirrel_app"
-    i=0
-    while [ "$i" -lt 15 ] && ! pgrep -x Squirrel >/dev/null 2>&1; do
-      sleep 1
-      i=$((i + 1))
-    done
+  exe=$(plutil -extract CFBundleExecutable raw -o - "$app/Contents/Info.plist" 2>/dev/null) || return 0
+  if pgrep -f "^$app/Contents/MacOS/" >/dev/null 2>&1; then
+    "$app/Contents/MacOS/$exe" --reload
+  else
+    echo "SENK 没有在运行，改动会在它下次启动时生效。"
   fi
-  "$squirrel" --reload
 }
 
 # 已安装的方案（两个安装包各一个），各自写一份 <方案>.custom.yaml

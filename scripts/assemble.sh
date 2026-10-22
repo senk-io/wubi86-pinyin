@@ -4,14 +4,15 @@
 #   不给出安装包时，读取仓库根目录的 VARIANT 文件（发布的 zip 里有），没有则为 wubi86-pinyin。
 #   wubi86-pinyin：SENK五笔混拼输入法86版（方案 wubi86_pinyin）
 #   pinyin：SENK拼音输入法（方案 senk_pinyin）
-# 生成的 default.custom.yaml 把本包的方案放在第一位；目标目录里已有另一个包的方案时一并列出。
+# 生成的 default.custom.yaml 列出目标目录里已有的本项目方案，顺序固定：五笔在前，拼音在后。
+# 第一个是新会话的默认方案；SENK 程序按菜单栏里选的「SENK五笔」「SENK拼音」切换方案。
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 dest=${1:?usage: assemble.sh <dest> [wubi86-pinyin|pinyin]}
 variant=${2:-$(cat "$root/VARIANT" 2>/dev/null || echo wubi86-pinyin)}
 case "$variant" in
-  wubi86-pinyin) schema=wubi86_pinyin other=senk_pinyin ;;
-  pinyin) schema=senk_pinyin other=wubi86_pinyin ;;
+  wubi86-pinyin) schema=wubi86_pinyin ;;
+  pinyin) schema=senk_pinyin ;;
   *) echo "未知的安装包：$variant" >&2; exit 1 ;;
 esac
 
@@ -30,7 +31,8 @@ fi
   echo "# 由 wubi86-pinyin 的安装脚本生成。已有其它方案的用户可以自行合并 schema_list"
   echo "patch:"
   echo "  schema_list:"
-  echo "    - schema: $schema"
-  [ ! -f "$dest/$other.schema.yaml" ] || echo "    - schema: $other"
+  for s in wubi86_pinyin senk_pinyin; do
+    [ ! -f "$dest/$s.schema.yaml" ] || echo "    - schema: $s"
+  done
   echo "  menu/page_size: 6"
 } > "$dest/default.custom.yaml"
