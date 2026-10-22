@@ -29,6 +29,7 @@ switches:
 engine:
   processors:
     - ascii_composer
+    - lua_processor@*senk_uppercase       # Shift+字母直接上屏大写，不出候选框
     - recognizer
     - key_binder
     - speller
