@@ -38,6 +38,7 @@ switches:
 engine:
   processors:
     - ascii_composer
+    - lua_processor@*senk_uppercase       # Shift+字母直接上屏大写，不出候选框
     - recognizer
     - key_binder
     - lua_processor@*wubi_topup           # 五笔四码顶字，打拼音时不顶

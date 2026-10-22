@@ -50,6 +50,12 @@ he
 $
 ~
 *
+# Shift+字母进入英文：字母、数字、符号原样直接上屏，按空格（也上屏）回到中文；正在输入时先上屏选中的候选
+A
+Hello wo
+U.S. 
+woAbc
+Ab{Return}wo
 # Control+. 切换全角/半角标点：半角时标点键交给应用输入 ASCII 字符（不上屏任何东西），再按一次恢复全角
 @ {Control+period}
 ,

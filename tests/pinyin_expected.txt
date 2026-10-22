@@ -17,6 +17,16 @@ commit [ -> 【
 [:
 commit $ -> ￥
 $:
+commit A -> A
+A:
+commit Hello wo -> Hello 
+Hello wo: 1.我 2.喔 3.窝 4.握 5.卧 6.沃
+commit U.S.  -> U.S. 
+U.S. :
+commit woAbc -> 我Abc
+woAbc:
+commit Ab{Return}wo -> Ab
+Ab{Return}wo: 1.我 2.喔 3.窝 4.握 5.卧 6.沃
 ,:
 commit , -> ，
 ,:
