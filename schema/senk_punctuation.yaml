@@ -1,0 +1,38 @@
+# encoding: utf-8
+# SENK五笔、SENK拼音共用的标点：每个键直接上屏一个字符，不弹出候选菜单让人选。
+# 与 Rime 默认（punctuation.yaml 的 half_shape）相比，只把原来是一组候选的键改成了其中常用的一个。
+# 反引号 ` 在SENK五笔里是学码模式前缀，保持默认。
+
+half_shape:
+  ',' : { commit: ， }
+  '.' : { commit: 。 }
+  '<' : { commit: 《 }
+  '>' : { commit: 》 }
+  '/' : { commit: '/' }
+  '?' : { commit: ？ }
+  ';' : { commit: ； }
+  ':' : { commit: ： }
+  '''' : { pair: [ '‘', '’' ] }
+  '"' : { pair: [ '“', '”' ] }
+  '\' : { commit: 、 }
+  '|' : { commit: '|' }
+  '`' : '`'
+  '~' : { commit: ～ }
+  '!' : { commit: ！ }
+  '@' : { commit: '@' }
+  '#' : { commit: '#' }
+  '%' : { commit: '%' }
+  '$' : { commit: ￥ }
+  '^' : { commit: …… }
+  '&' : { commit: '&' }
+  '*' : { commit: '*' }
+  '(' : { commit: （ }
+  ')' : { commit: ） }
+  '-' : { commit: '-' }
+  '_' : { commit: —— }
+  '+' : { commit: '+' }
+  '=' : { commit: '=' }
+  '[' : { commit: 【 }
+  ']' : { commit: 】 }
+  '{' : { commit: ｛ }
+  '}' : { commit: ｝ }

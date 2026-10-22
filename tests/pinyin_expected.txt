@@ -9,3 +9,11 @@ woshizhongguoren: 1.我是中国人 2.我是 3.我市 4.卧室 5.卧式 6.我
 wqvb: 1.我区别 2.我去 3.委屈 4.误区 5.我区 6.弯曲
 commit shi -> 事
 shi: 1.事 2.是 3.时 4.使 5.市 6.式
+commit / -> /
+/:
+commit \ -> 、
+\:
+commit [ -> 【
+[:
+commit $ -> ￥
+$:

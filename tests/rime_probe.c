@@ -1,6 +1,7 @@
 // 用 librime 驱动方案：逐行读取输入码，打印前 N 个候选及注释。
 // 用法：rime_probe <shared_dir> <user_dir> <schema_id> [n]  （stdin 每行一个输入码）
-// 输入行以 "!" 开头表示"选第 k 个候选上屏"，例如 "!2 ggtt"，用于测试用户词频。
+// 输入行以 "!" 开头表示"选第 k 个候选上屏"，例如 "!2 ggtt"，用于测试用户词频；
+// "!" 后面不是数字时按候选文字选，例如 "!器 qi"，不受候选位置影响。
 // 以 "$ " 开头的行交给 shell 执行（用于在用例中准备或检查文件），其输出原样打印。
 // 以 "@ " 开头的行只发送按键序列、不打印候选，例如 "@ {Control+Shift+R}"。
 // "+ 开关名" / "- 开关名" 打开或关闭方案开关，例如 "+ emoji"。
@@ -53,15 +54,31 @@ int main(int argc, char **argv) {
       continue;
     }
     int pick = 0;
-    char *code = line;
-    if (line[0] == '!') { pick = atoi(line + 1); code = strchr(line, ' ') + 1; }
+    char *code = line, *text = NULL;
+    if (line[0] == '!') {
+      code = strchr(line, ' ');
+      *code++ = 0;
+      if (line[1] >= '0' && line[1] <= '9') pick = atoi(line + 1); else { text = line + 1; pick = -1; }
+    }
     api->clear_composition(s);
     api->simulate_key_sequence(s, code);
+    if (text) {
+      RimeCandidateListIterator it = {0};
+      if (api->candidate_list_begin(s, &it)) {
+        while (api->candidate_list_next(&it)) {
+          if (strcmp(it.candidate.text, text) == 0) { api->select_candidate(s, it.index); break; }
+        }
+        api->candidate_list_end(&it);
+      }
+    }
     if (pick) {
-      api->select_candidate_on_current_page(s, pick - 1);
+      if (pick > 0) api->select_candidate_on_current_page(s, pick - 1);
       RIME_STRUCT(RimeCommit, commit);
       if (api->get_commit(s, &commit)) { printf("commit %s -> %s\n", code, commit.text); api->free_commit(&commit); }
     } else {
+      // 直接上屏的按键（如标点）没有候选菜单，打印上屏结果
+      RIME_STRUCT(RimeCommit, commit);
+      if (api->get_commit(s, &commit)) { printf("commit %s -> %s\n", code, commit.text); api->free_commit(&commit); }
       print_menu(api, s, code, n);
     }
   }
