@@ -15,6 +15,8 @@
 --    - 用全码打出的字词如果有更短的简码（一级、二级、三级简码），注释里标出简码，
 --      如 wqiy -> 你〔简 wq〕（配置 short_hint，默认开）。
 -- 4. 忘码记录：上屏时交给 wubi_memory 记录，见该文件。
+-- 5. 两码排序：整个输入正好两个字母时，依次为二级简码（两码打全的五笔候选）、
+--    三级简码（再打一码就能上屏的五笔候选）、拼音、其余五笔候选。
 --
 -- 配置（schema 中与 filter 同名的节点）：
 --   dictionary: 用于反查的五笔码表名
@@ -28,10 +30,12 @@ local memory = safe.require("wubi_memory")
 
 local M = {}
 
-local TABLE_TYPES = { table = true, user_table = true, completion = true }
+-- 不是拼音的候选：五笔（码表、用户词、补全）和标点。标点不能算作拼音，
+-- 否则会被当成简拼噪音丢掉（按 / . [ 时候选消失或只剩全角），上屏时还会被记成忘码
+local NOT_PINYIN = { table = true, user_table = true, completion = true, punct = true }
 
 local function is_from_pinyin(cand)
-  return not TABLE_TYPES[cand:get_genuine().type]
+  return not NOT_PINYIN[cand:get_genuine().type]
 end
 
 local function on_commit(ctx)
@@ -165,6 +169,16 @@ local function is_noise(cand, ctx, env, state)
   return noise
 end
 
+-- 两码输入时候选的档次：1 二级简码，2 三级简码，3 拼音，4 其余五笔。
+-- 五笔补全候选的注释是"~"加上还差的编码，差一码的就是三级简码
+local function two_key_tier(cand)
+  if is_from_pinyin(cand) then return 3 end
+  local genuine = cand:get_genuine()
+  if genuine.type ~= "completion" then return 1 end
+  if (genuine.comment or ""):match("^~%l$") then return 2 end
+  return 4
+end
+
 -- 候选的 yield 都在 pcall 之外：附加逻辑出错时 is_noise 返回 nil，候选照常送出
 function M.func(translation, env)
   if not env.ready then
@@ -178,9 +192,23 @@ function M.func(translation, env)
     seen_wubi = false,
     seen_full_phrase = false,
   }
+  -- 两码时要等全部候选都过一遍才知道各档有哪些（最多几百个），二级简码以外的先存起来
+  local tiers = ctx.input:match("^%l%l$") and { {}, {}, {} }
   for cand in translation:iter() do
+    -- 档次要在 is_noise 之前取：编码提示会改写补全候选的注释
+    local tier = tiers and safe.call("order", two_key_tier, cand)
     if not safe.call("filter", is_noise, cand, ctx, env, state) then
-      yield(cand)
+      if not tiers or tier == 1 then
+        yield(cand)
+      else
+        local list = tiers[(tier or 3) - 1]
+        list[#list + 1] = cand
+      end
+    end
+  end
+  if tiers then
+    for _, list in ipairs(tiers) do
+      for _, cand in ipairs(list) do yield(cand) end
     end
   end
 end

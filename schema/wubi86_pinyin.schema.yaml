@@ -110,8 +110,12 @@ wubi_mixed_filter:
 wubi_topup:
   code_length: 4
 
+# 半角标点每个键直接上屏，不弹出菜单（见 senk_punctuation.yaml）；不继承默认的 half_shape，Rime 无法把它的单值合并成 commit
 punctuator:
-  import_preset: default
+  full_shape:
+    __include: punctuation:/full_shape
+  half_shape:
+    __include: senk_punctuation:/half_shape
 
 key_binder:
   import_preset: default

@@ -5,7 +5,7 @@ adnt: 1.藏 2.茂〔简 adn〕 3.荿
 nihao: 1.你好〔wqvb〕 2.你〔wq〕 3.拟〔rny〕 4.尼〔nx〕 5.呢〔knx〕 6.泥〔inx〕
 zhongguo: 1.中国〔khlg〕 2.中古〔khdg〕 3.中〔k〕 4.种〔tkh〕 5.重〔tgj〕 6.钟〔qkhh〕
 xian: 1.先〔tfq〕 2.线〔xg〕 3.县〔egc〕 4.现〔gm〕 5.西安〔sgpv〕 6.咁〔kafg〕
-wo: 1.伙 2.我〔q〕 3.喔〔kngf〕 4.窝〔pwkw〕 5.握〔rng〕 6.卧〔ahnh〕
+wo: 1.伙 2.侎~y 3.偻~v 4.我〔q〕 5.喔〔kngf〕 6.窝〔pwkw〕
 `shu: 1.书〔nnh〕 2.数〔ovt〕 3.树〔scf〕 4.输〔lwg〕 5.属〔ntk〕 6.熟〔ybv〕
 `zhong: 1.中〔k〕 2.种〔tkh〕 3.重〔tgj〕 4.钟〔qkhh〕 5.仲〔wkhh〕 6.众〔www〕
 commit adnt -> 茂
@@ -28,3 +28,22 @@ commit qi -> 器
 kk: 1.吕 2.器〔kkd 忘1〕 3.嚣~d 4.骂~c 5.吅~g 6.串~h
 commit kkd -> 器
 kk: 1.吕 2.器~d 3.嚣~d 4.骂~c 5.吅~g 6.串~h
+wo: 1.伙 2.侎~y 3.偻~v 4.我〔q〕 5.喔〔kngf〕 6.窝〔pwkw〕
+de: 1.胡 2.髭~h 3.砽~h 4.硼~e 5.有~f 6.郁~b
+he: 1.肯 2.眀~g 3.瞬~p 4.睬~s 5.和〔t〕 6.喝〔kjq〕
+commit / -> /
+/:
+commit \ -> 、
+\:
+commit [ -> 【
+[:
+commit ] -> 】
+]:
+commit < -> 《
+<:
+commit $ -> ￥
+$:
+commit ~ -> ～
+~:
+commit * -> *
+*:

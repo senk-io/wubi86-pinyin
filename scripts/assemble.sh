@@ -21,7 +21,7 @@ mkdir -p "$dest/lua"
 rm -f "$dest/lua/wubi_predict.lua" "$dest/lua/wubi_predict_switch.lua" "$dest/lua/pinyin_filter.lua"
 # 两个包共用：拼音词库
 cp "$root"/data/pinyin_simp.*.yaml "$dest/"
-cp "$root/schema/$schema.schema.yaml" "$dest/"
+cp "$root/schema/$schema.schema.yaml" "$root/schema/senk_punctuation.yaml" "$dest/"
 if [ "$variant" = wubi86-pinyin ]; then
   cp "$root"/data/wubi86_jidian*.yaml "$dest/"
   for f in wubi_safe wubi_mixed_filter wubi_memory wubi_topup; do cp "$root/schema/lua/$f.lua" "$dest/lua/"; done
