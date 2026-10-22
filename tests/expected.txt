@@ -47,3 +47,7 @@ commit ~ -> ～
 ~:
 commit * -> *
 *:
+,:
+\:
+commit , -> ，
+,:

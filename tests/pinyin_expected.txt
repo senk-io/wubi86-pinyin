@@ -17,3 +17,6 @@ commit [ -> 【
 [:
 commit $ -> ￥
 $:
+,:
+commit , -> ，
+,:

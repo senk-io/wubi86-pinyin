@@ -17,3 +17,8 @@ shi
 \
 [
 $
+# Control+. 切换全角/半角标点
+@ {Control+period}
+,
+@ {Control+period}
+,
