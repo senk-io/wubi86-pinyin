@@ -97,6 +97,8 @@ wait_state() {
   done
   return 1
 }
+# 最近一次部署完成的时间（user.yaml 的 var/last_build_time），没有时为空
+build_time() { sed -n 's/^ *last_build_time: *\([0-9][0-9]*\).*/\1/p' "$rime_dir/user.yaml" 2>/dev/null | head -n 1; }
 wait_quit() {
   i=0
   while [ "$i" -lt 15 ]; do
@@ -371,25 +373,23 @@ if ! senk_running; then
 else
   pressure=$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null || echo "?")
   [ "$pressure" = 1 ] || fail "内存压力等级变为 ${pressure}，不部署"
-  # 部署成功的标志是 build/ 下的方案文件比部署开始时新。不看 Rime 日志：它的 INFO 行有缓冲，可能迟迟不写出
-  marker="$state_dir/deploy-$stamp"
-  : >"$marker" || fail "无法创建 $marker"
+  # 部署完成的标志是 user.yaml 里的 var/last_build_time 变了：每次部署结束都会更新它（精确到秒）。
+  # 不看 build/ 下文件的时间：文件没有变化时重新部署不会重写它们（SENK 刚启动时已经编译过）。
+  # 也不看 Rime 日志：它的 INFO 行有缓冲，可能迟迟不写出
+  build_before=$(build_time)
   errors_before=0
   [ ! -f "$rime_log_dir/rime.senk.ERROR" ] || errors_before=$(wc -l <"$rime_log_dir/rime.senk.ERROR")
-  sleep 1  # 文件时间精度是 1 秒，避免和 marker 落在同一秒
+  sleep 1  # 让这次部署的完成时间晚于上次，避免两次落在同一秒
   senk --reload || fail "--reload 失败（见日志）"
   log "已通知 SENK 重新部署，等待结果"
   i=0
+  done_all=0
   while [ "$i" -lt "$deploy_timeout" ]; do
-    done_all=1
-    for s in wubi86_pinyin senk_pinyin; do
-      [ ! -f "$rime_dir/$s.schema.yaml" ] || [ -n "$(find "$rime_dir/build/$s.schema.yaml" -newer "$marker" 2>/dev/null)" ] || done_all=0
-    done
-    [ "$done_all" = 0 ] || break
+    now=$(build_time)
+    if [ -n "$now" ] && [ "$now" != "$build_before" ]; then done_all=1; break; fi
     sleep 1
     i=$((i + 1))
   done
-  rm -f "$marker"
   if [ "$done_all" = 0 ]; then
     # 部署可能还在进行，这时恢复文件会和它冲突，所以只停止并报告，不自动回滚
     log "停止：${deploy_timeout} 秒内部署没有完成。没有自动回滚（部署可能仍在进行）。"
