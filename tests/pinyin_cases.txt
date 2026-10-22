@@ -28,3 +28,6 @@ Ab{Return}wo
 ,
 @ {Control+period}
 ,
+# 打了拼音后按句号或逗号：先上屏首选，再上屏标点（句号不用来翻页）
+ni.
+ni,
