@@ -13,8 +13,8 @@
 set -u
 
 # 固定版本。改版本时两项一起改，CI 会下载并核对。
-senk_version="1.0.0"
-senk_sha256="90f30a07cd3532714b637f03fa54307184e682bef7627d7f6188152e16309704"
+senk_version="1.0.1"
+senk_sha256="ff432b6a357a312822ba6777b317a57a1908b2e76469f2da589d275c1c7da6ca"
 min_macos=13
 min_free_mb=500
 deploy_timeout=120
