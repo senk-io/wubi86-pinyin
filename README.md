@@ -1,8 +1,8 @@
-# 森克输入法（SENK）
+# SENK五笔 / SENK拼音
 
-基于 [Rime](https://rime.im) 的五笔 86 版 + 拼音混输输入方案，面向 Windows（小狼毫）和 macOS（鼠须管）。包括两款：**SENK五笔混拼输入法86版** 和 **SENK拼音输入法**。
+基于 [Rime](https://rime.im) 的五笔 86 版 + 拼音混输输入方案，面向 macOS 和 Windows（小狼毫）。包括两款：**SENK五笔混拼输入法86版** 和 **SENK拼音输入法**。
 
-> 输入法菜单栏里显示的仍是「鼠须管」或「小狼毫」：那是本方案运行所在的 Rime 前端程序的名字。方案菜单（`` Control+` ``）和顶部显示的是短名「SENK五笔」「SENK拼音」，以节省空间。
+macOS 上用自己的输入法程序 SENK（源码在 [senk-io/senk-input-macos](https://github.com/senk-io/senk-input-macos)，GPL-3.0）。菜单栏的输入法菜单里直接显示「SENK五笔」「SENK拼音」两项，选哪个就用哪个方案。
 
 目标是解决一个具体的问题：**五笔打到一半忘了码，想要的字又不在首位，只能按数字去选。**
 
@@ -13,7 +13,7 @@
 | `wubi86-pinyin.zip` | SENK五笔混拼输入法86版（菜单里显示「SENK五笔」） | 用五笔为主，忘码时直接打拼音；一、二级简码固定在首位，全码打出有简码的字会提示简码 |
 | `pinyin.zip` | SENK拼音输入法（菜单里显示「SENK拼音」） | 只用拼音：全拼、简拼、整句连打，不含五笔 |
 
-两个包都支持可选的拼音语言模型；可以先后都装，在方案菜单（`` Control+` ``）里切换。
+两个包都支持可选的拼音语言模型；可以先后都装，在菜单栏的输入法菜单里切换「SENK五笔」「SENK拼音」。
 
 ## 现在能做什么（v0.4）
 
@@ -48,16 +48,16 @@ sh scripts/install-grammar-macos.sh --remove   # 卸载
      sh scripts/install-macos.sh           # 预览：列出检查结果和将要执行的每一步，不做任何改动
      sh scripts/install-macos.sh --apply   # 执行：输入 yes 确认后才开始
      ```
-     - 已经装了鼠须管的，不卸载、不重装、不结束它的进程，只更新方案文件并通知它重新部署。
-     - 没装的，从官方 GitHub Release 下载固定版本（鼠须管 1.1.2），校验 sha256 和签名后安装，需要输入登录密码。
+     - 从 [senk-io/senk-input-macos](https://github.com/senk-io/senk-input-macos/releases) 下载固定版本的 SENK 程序，校验 sha256 和签名后装到 `~/Library/Input Methods`，不需要输入密码。已装的是同一版本时不重装。
+     - 装好后启用已装方案对应的「SENK五笔」「SENK拼音」，选中刚装的那一项，通知 SENK 重新部署并等待完成。
      - 开始前检查系统版本、磁盘空间、内存压力（活动监视器里内存压力是黄或红时不安装）和是否有别的安装在进行；任何一项不满足就退出，不做改动。
-     - 改动前把 `~/Library/Rime` 和鼠须管的偏好设置备份到 `~/Library/Application Support/senk-input/backup-时间`；任何一步失败都会停止并自动恢复。日志在 `~/Library/Logs/senk-input/`。
+     - 改动前把 `~/Library/Rime`、SENK 的偏好设置和原来的程序备份到 `~/Library/Application Support/senk-input/backup-时间`；任何一步失败都会停止并自动恢复。日志在 `~/Library/Logs/senk-input/`。
    - Windows：`powershell -ExecutionPolicy Bypass -File scripts\install-windows.ps1`（会从官方 GitHub Release 下载最新的小狼毫，校验签名后安装）
-2. 在输入法菜单里选择「鼠须管」或「小狼毫」，默认方案就是所装的包对应的方案。
+2. 在菜单栏的输入法菜单里选择「SENK五笔」或「SENK拼音」（Windows 上选「小狼毫」）。
 
-macOS 上第一次装鼠须管后，系统通常要注销并重新登录才会启动它。脚本不会替你注销，也不会强行启动输入法，会说明情况后停下，由你决定。
+新版 macOS 不让脚本自动启用第三方输入法（实测 macOS 26），第一次安装时脚本会提示你到「系统设置 → 键盘 → 输入法 → 编辑… → +」里添加「SENK五笔」「SENK拼音」，添加好后按回车继续。添加列表由系统缓存，新装后可能要注销并重新登录才出现 SENK。脚本不会替你注销，也不会强行启动输入法。
 
-卸载：`sh scripts/uninstall-macos.sh`。它会删除鼠须管应用、安装记录和偏好设置；`~/Library/Rime`（含词频记录）会先询问再删。
+卸载：`sh scripts/uninstall-macos.sh` 预览，加 `--apply` 执行。它会停用并删除 SENK 程序和偏好设置，不需要输入密码；`~/Library/Rime`（含词频记录）默认保留，加 `--remove-user-data` 才删除。改动前都会备份到 `~/Library/Application Support/senk-input/uninstall-时间`。
 
 如果你原来自己写的 `default.custom.yaml` 里没有启用本方案，安装脚本会替换它，原文件在上面的备份目录里。
 
