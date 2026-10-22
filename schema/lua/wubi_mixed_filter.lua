@@ -17,6 +17,8 @@
 -- 4. 忘码记录：上屏时交给 wubi_memory 记录，见该文件。
 -- 5. 两码排序：整个输入正好两个字母时，依次为二级简码（两码打全的五笔候选）、
 --    三级简码（再打一码就能上屏的五笔候选）、拼音、其余五笔候选。
+--    三级简码和其余五笔两组，组内按用户词频排：选得多的在前。Rime 码表把用过的字放在前面，
+--    但用过的字之间按编码顺序排，不按次数；候选的 quality 含用户词频，这里按它重新排。
 --
 -- 配置（schema 中与 filter 同名的节点）：
 --   dictionary: 用于反查的五笔码表名
@@ -179,6 +181,23 @@ local function two_key_tier(cand)
   return 4
 end
 
+-- 组内按 quality 从高到低排，相同时保持原顺序（table.sort 不稳定，所以带上原位置）。
+-- quality 先按 0.0001 取整：码表自带的字因词频不同只差百万分之一左右，不应改变它们原来的顺序；
+-- 选过的字每多选一次约高 0.007。取整后再比较，比较关系仍可传递
+local QUALITY_STEP = 1e-4
+
+local function sort_by_quality(list)
+  local keyed = {}
+  for i, cand in ipairs(list) do
+    keyed[i] = { cand = cand, level = math.floor(cand.quality / QUALITY_STEP), index = i }
+  end
+  table.sort(keyed, function(a, b)
+    if a.level ~= b.level then return a.level > b.level end
+    return a.index < b.index
+  end)
+  for i, item in ipairs(keyed) do list[i] = item.cand end
+end
+
 -- 候选的 yield 都在 pcall 之外：附加逻辑出错时 is_noise 返回 nil，候选照常送出
 function M.func(translation, env)
   if not env.ready then
@@ -207,6 +226,9 @@ function M.func(translation, env)
     end
   end
   if tiers then
+    -- 排序出错时保持原顺序（sort_by_quality 只在全部成功后才写回）
+    safe.call("order", sort_by_quality, tiers[1])
+    safe.call("order", sort_by_quality, tiers[3])
     for _, list in ipairs(tiers) do
       for _, cand in ipairs(list) do yield(cand) end
     end
