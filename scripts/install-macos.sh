@@ -361,7 +361,7 @@ else
   while [ "$i" -lt "$deploy_timeout" ]; do
     done_all=1
     for s in wubi86_pinyin senk_pinyin; do
-      [ ! -f "$rime_dir/$s.schema.yaml" ] || [ "$rime_dir/build/$s.schema.yaml" -nt "$marker" ] || done_all=0
+      [ ! -f "$rime_dir/$s.schema.yaml" ] || [ -n "$(find "$rime_dir/build/$s.schema.yaml" -newer "$marker" 2>/dev/null)" ] || done_all=0
     done
     [ "$done_all" = 0 ] || break
     sleep 1
